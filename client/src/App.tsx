@@ -52,7 +52,9 @@ function Workspace() {
 
 export default function App() {
   const { configured, session, ready } = useAuth();
+  const previewLogin = new URLSearchParams(window.location.search).has('preview-login');
   if (!ready) return <main className="loading-page">Loading gaptrace…</main>;
+  if (previewLogin) return <AuthForm preview />;
   if (configured && !session) return <AuthForm />;
   return <Workspace />;
 }
