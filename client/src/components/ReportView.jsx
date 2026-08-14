@@ -1,0 +1,27 @@
+import { CriterionCard } from './CriterionCard';
+
+export function ReportView({ report, onNewAnalysis }) {
+  const criteria = report.criteria ?? [];
+  const counts = criteria.reduce((result, criterion) => ({ ...result, [criterion.status]: (result[criterion.status] ?? 0) + 1 }), {});
+  return <section className="report" aria-labelledby="report-title">
+    <header className="report-header">
+      <section>
+        <p className="eyebrow">Analysis report</p>
+        <h1 id="report-title">Evidence for every criterion.</h1>
+        <p>Created {new Date(report.created_at ?? Date.now()).toLocaleString()}</p>
+      </section>
+      <button type="button" onClick={onNewAnalysis}>New analysis</button>
+    </header>
+    <section className="summary" aria-label="Report summary">
+      <article><strong>{criteria.length}</strong><span>criteria checked</span></article>
+      <article><strong>{counts.full ?? 0}</strong><span>full</span></article>
+      <article><strong>{(counts.partial ?? 0) + (counts.missing ?? 0)}</strong><span>gaps found</span></article>
+      <article><strong>{counts.needs_review ?? 0}</strong><span>needs review</span></article>
+    </section>
+    {report.pr_reference && <p className="source-reference">Source: <a href={report.pr_reference} target="_blank" rel="noreferrer">{report.pr_reference}</a></p>}
+    <section className="criteria-list" aria-labelledby="criteria-title">
+      <header><h2 id="criteria-title">Criterion verdicts</h2><p>Status reflects the supplied change only. Read the cited evidence before signing off.</p></header>
+      {criteria.map((criterion, index) => <CriterionCard key={criterion.id} criterion={criterion} number={index + 1} />)}
+    </section>
+  </section>;
+}
