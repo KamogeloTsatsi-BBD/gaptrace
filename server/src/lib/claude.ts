@@ -27,11 +27,25 @@ export const claude = new Anthropic({
 export const MODEL = 'claude-sonnet-5'
 
 /**
+ * The slice of the client the AI services actually use. Narrower than
+ * `Anthropic` so a stand-in only has to provide `parse`, while `Pick` keeps
+ * the real signature — and its `parsed_output` inference — intact at the call
+ * site.
+ *
+ * Note: `parse` returns the SDK's `APIPromise`, a class with private fields,
+ * so a hand-rolled fake still has to cast its return value. Keeping the exact
+ * signature is the deliberate trade: call-site type safety over mock ergonomics.
+ */
+export interface MessageParser {
+  messages: Pick<Anthropic['messages'], 'parse'>
+}
+
+/**
  * What an AI service needs to talk to the model. Passed in rather than
  * imported so services stay swappable and testable in isolation.
  */
 export interface AiDeps {
-  claude: Anthropic
+  claude: MessageParser
   model: string
 }
 
