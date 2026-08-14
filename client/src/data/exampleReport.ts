@@ -1,7 +1,7 @@
-export const exampleReport = {
-  id: 'demo-report',
-  created_at: '2026-08-14T09:30:00Z',
-  pr_reference: 'https://github.com/acme/portal/pull/184',
+import type { AnalysisReport } from '../types';
+
+export const exampleReport: AnalysisReport = {
+  id: 'demo-report', created_at: '2026-08-14T09:30:00Z', pr_reference: 'https://github.com/acme/portal/pull/184',
   requirement_text: 'Users can reset their password by email. Validate the email address and rate-limit reset requests.',
   criteria: [
     { id: '1', criterion_text: 'Users can reset their password by email.', verifiable: true, status: 'full', reason: 'The reset request endpoint generates a token and sends an email.', evidence: [{ file: 'src/routes/passwordReset.ts', lines: '18–56' }], confidence: 0.93, category: null },
