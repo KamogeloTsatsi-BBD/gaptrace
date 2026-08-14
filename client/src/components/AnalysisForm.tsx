@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { DiffPreview } from "./DiffPreview";
+import { LineNumberedTextarea } from "./LineNumberedTextarea";
 import type { CreateAnalysisPayload } from "../types";
 
 interface AnalysisFormProps {
@@ -34,15 +36,16 @@ export function AnalysisForm({ onSubmit, submitting }: AnalysisFormProps) {
       </header>
       <form className="analysis-form" onSubmit={submit}>
         <fieldset>
-          <legend>Requirement</legend>
+          <legend className="visually-hidden">Requirement</legend>
+          <h2 className="fieldset-title">Requirement</h2>
           <label htmlFor="requirement-text">
             Acceptance criteria or requirement text
           </label>
-          <textarea
+          <LineNumberedTextarea
             id="requirement-text"
             value={requirementText}
             onChange={(event) => setRequirementText(event.target.value)}
-            placeholder="Paste a ticket, Gherkin scenario, or acceptance criteria…"
+            placeholder="Paste a ticket, Gherkin scenario, or acceptance criteria..."
             rows={9}
             required
           />
@@ -52,7 +55,8 @@ export function AnalysisForm({ onSubmit, submitting }: AnalysisFormProps) {
           </p>
         </fieldset>
         <fieldset>
-          <legend>Code source</legend>
+          <legend className="visually-hidden">Code source</legend>
+          <h2 className="fieldset-title">Code source</h2>
           <section className="source-toggle" aria-label="Code source type">
             <label>
               <input
@@ -76,7 +80,8 @@ export function AnalysisForm({ onSubmit, submitting }: AnalysisFormProps) {
           {sourceType === "diff" ? (
             <label htmlFor="diff-text">
               Unified diff
-              <textarea
+              <LineNumberedTextarea
+                className="diff-input"
                 id="diff-text"
                 value={diffText}
                 onChange={(event) => setDiffText(event.target.value)}
@@ -84,6 +89,7 @@ export function AnalysisForm({ onSubmit, submitting }: AnalysisFormProps) {
                 rows={12}
                 required
               />
+              <DiffPreview diff={diffText} />
             </label>
           ) : (
             <label htmlFor="pr-url">
@@ -108,7 +114,7 @@ export function AnalysisForm({ onSubmit, submitting }: AnalysisFormProps) {
             browser.
           </p>
           <button type="submit" disabled={submitting}>
-            {submitting ? "Analysing criteria…" : "Run analysis"}
+            {submitting ? "Analysing criteria..." : "Run analysis"}
           </button>
         </footer>
       </form>
