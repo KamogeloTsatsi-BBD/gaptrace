@@ -8,8 +8,7 @@ import { createInsightsRouter } from './routes/insights.js'
 import type { AnalysisStoreFactory } from './repositories/analysisStore.js'
 import type { InsightSnapshotStoreFactory } from './repositories/insightSnapshotStore.js'
 
-/** Comfortably above the comparator's 300k-character diff cap. */
-const BODY_LIMIT = '5mb'
+const BODY_LIMIT = '4mb'
 
 /** Stores are required, so the server can't boot appearing to work and storing nothing. */
 export function createApp(
