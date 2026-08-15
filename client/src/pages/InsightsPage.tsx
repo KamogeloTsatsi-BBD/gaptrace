@@ -2,24 +2,20 @@ import { useEffect } from 'react'
 import { InsightsView } from '../components/insights/InsightsView'
 import { useInsights } from '../hooks/useInsights'
 import { useAuth } from '../auth/useAuth'
-import { exampleInsights } from '../data/exampleInsights'
 
 /**
- * Default-exported so the shell can `lazy()` this route. The insights bundle
- * carries the dashboard and its example data, and most sessions never open it
- * — there is no reason for it to be in the chunk that renders the form.
+ * Default-exported so the shell can `lazy()` this route. Most sessions never
+ * open the dashboard, so there is no reason for it to be in the form's chunk.
  */
 export default function InsightsPage() {
-  const { accessToken, configured } = useAuth()
-  const { data, loading, error, generating, generateError, load, generate, showExample } =
-    useInsights(accessToken)
+  const { accessToken } = useAuth()
+  const { data, loading, error, generating, generateError, load, generate } = useInsights(accessToken)
 
   useEffect(() => {
     // `load` is free server-side and self-deduplicating, so an effect is the
     // right place for it. Generating a narrative is not, and never runs here.
-    if (configured) void load()
-    else showExample(exampleInsights)
-  }, [configured, load, showExample])
+    void load()
+  }, [load])
 
   return (
     <InsightsView
@@ -28,7 +24,7 @@ export default function InsightsPage() {
       error={error}
       generating={generating}
       generateError={generateError}
-      onGenerate={configured ? generate : undefined}
+      onGenerate={generate}
     />
   )
 }
