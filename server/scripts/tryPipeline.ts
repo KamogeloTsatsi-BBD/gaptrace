@@ -7,7 +7,7 @@
  * Prints the parsed criteria and each verdict, so you can iterate on the
  * prompts until the output is reliable.
  */
-import 'dotenv/config'
+import '../src/lib/loadEnv.js'
 import { readFileSync } from 'node:fs'
 import { parseRequirement } from '../src/services/requirementParser.js'
 import { compareAll } from '../src/services/groundedComparator.js'

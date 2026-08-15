@@ -114,17 +114,30 @@ async function compareOne(
     throw new Error('groundedComparator: model returned no parseable output')
   }
 
-  const isGap = verdict.status === 'partial' || verdict.status === 'missing'
-
-  return {
-    status: verdict.status,
+  const base = {
     reason: verdict.reason,
-    evidence: verdict.evidence.length > 0 ? verdict.evidence : 'none',
+    evidence: verdict.evidence.length > 0 ? verdict.evidence : ('none' as const),
     confidence: clampConfidence(verdict.confidence),
-    // The prompt asks for this, but don't trust it — a category on a `full`
-    // verdict would corrupt the gap aggregation downstream.
-    category: isGap ? verdict.category : null,
   }
+
+  // Don't trust the model to have honoured the status/category pairing: a
+  // category on a `full` verdict, or a gap with none, would both corrupt the
+  // aggregation. 'other' is the taxonomy's escape hatch for an uncategorised gap.
+  const { status } = verdict
+  if (status !== 'partial' && status !== 'missing') {
+    return { ...base, status, category: null }
+  }
+
+  if (verdict.category === null) {
+    // Otherwise an uncategorised gap is indistinguishable from a genuine
+    // 'other' in the dashboard, and the prompt regression stays invisible.
+    deps.logger.warn('groundedComparator: gap verdict had no category; defaulting to other', {
+      criterionId: criterion.id,
+      status,
+    })
+  }
+
+  return { ...base, status, category: verdict.category ?? 'other' }
 }
 
 /** Criteria that can't be judged from code skip the LLM call entirely. */
