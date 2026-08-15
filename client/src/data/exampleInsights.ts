@@ -1,10 +1,6 @@
 import type { InsightsResponse } from '../types/api'
 
-/**
- * A stand-in dashboard for the unconfigured workspace. `stale: false` and
- * `canNarrate: false` so the demo never offers a generate button it could not
- * honour.
- */
+/** Demo-mode stand-in. `canNarrate: false` so no generate button is offered. */
 export const exampleInsights: InsightsResponse = {
   substrate: {
     analysisCount: 6,

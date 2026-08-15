@@ -2,12 +2,7 @@ import { memo } from 'react'
 import { AUDIENCE_LABELS, SEVERITY_LABELS } from '../../lib/format'
 import type { NarrativeCard } from '../../types/domain'
 
-/**
- * The three fields are labelled separately and deliberately: a grounding
- * statistic quotes a real number, a hypothesis is a guess about cause, and the
- * two must never be read as the same kind of claim. An insight layer that
- * blurs them stops being trusted.
- */
+/** The fields are labelled separately so a hypothesis never reads as a statistic. */
 export const NarrativeCardView = memo(function NarrativeCardView({
   card,
 }: {

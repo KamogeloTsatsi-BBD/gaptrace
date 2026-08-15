@@ -10,12 +10,7 @@ interface ReportViewProps {
   onNewAnalysis: () => void
 }
 
-/**
- * Reads the server's precomputed `summary` rather than counting the criteria
- * again. Two implementations of the same arithmetic is two chances to
- * disagree, and the header is where a disagreement would be most visible and
- * least explicable.
- */
+/** Reads the server's `summary` rather than counting the criteria again. */
 function toStats(report: AnalysisReport): Stat[] {
   const { total, byStatus } = report.summary
   return [

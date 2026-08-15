@@ -8,11 +8,7 @@ interface FormMessage {
   tone: 'error' | 'status'
 }
 
-/**
- * The fields are uncontrolled and read from `FormData` on submit. Nothing
- * derives from a half-typed password, so holding it in state would re-render
- * the form on every keystroke to display a value the DOM already has.
- */
+/** Uncontrolled fields: nothing derives from a half-typed password. */
 export function AuthForm({ preview = false }: { preview?: boolean }) {
   const { configured, signIn, signUp } = useAuth()
   const [mode, setMode] = useState<Mode>('signIn')
@@ -21,8 +17,8 @@ export function AuthForm({ preview = false }: { preview?: boolean }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    // Read before the first await: React pools nothing here, but
-    // `currentTarget` is null by the time an async continuation resumes.
+    // Read before the first await: `currentTarget` is null once an async
+    // continuation resumes.
     const fields = new FormData(event.currentTarget)
 
     if (preview || !configured) {
@@ -43,8 +39,7 @@ export function AuthForm({ preview = false }: { preview?: boolean }) {
       setMessage({ text: error.message, tone: 'error' })
       return
     }
-    // A successful sign-in swaps this whole view out; only sign-up has
-    // something left to say.
+    // A successful sign-in swaps this view out; only sign-up has more to say.
     setMessage(
       mode === 'signUp'
         ? { text: 'Check your email to confirm your account.', tone: 'status' }

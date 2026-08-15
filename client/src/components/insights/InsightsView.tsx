@@ -28,11 +28,7 @@ function toStats(substrate: InsightSubstrate): Stat[] {
   ]
 }
 
-/**
- * A presentational view over `useInsights`. It holds no state and makes no
- * calls — including the one that costs money, which arrives as `onGenerate`
- * and fires only from the button below.
- */
+/** Presentational: the call that costs money arrives as `onGenerate`. */
 export function InsightsView({
   data,
   loading,

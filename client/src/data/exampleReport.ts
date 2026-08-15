@@ -1,13 +1,8 @@
 import type { AnalysisReport } from '../types/domain'
 
-/**
- * A stand-in report for the unconfigured workspace, so the report experience
- * can be seen without an API key. Typed as the real `AnalysisReport` on
- * purpose: if the contract moves, this file fails the typecheck rather than
- * quietly demonstrating a shape the server no longer sends.
- */
+/** Typed as the real contract, so a stale example fails the typecheck. */
 export const exampleReport: AnalysisReport = {
-  id: 'demo-report',
+  id: 1,
   createdAt: '2026-08-14T09:30:00Z',
   prReference: 'https://github.com/acme/portal/pull/184',
   requirementText:

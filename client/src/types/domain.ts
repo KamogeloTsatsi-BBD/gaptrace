@@ -1,12 +1,4 @@
-/**
- * The domain vocabulary, mirroring `server/src/types.ts` field for field.
- *
- * This file is the contract. It is deliberately a straight mirror rather than a
- * convenient reshaping: every rename between the wire and the UI is a place the
- * two can drift silently, and the server already ships the shape the report
- * needs. Anything the client wants that the server does not send belongs in a
- * selector, not in a divergent type.
- */
+/** Mirrors `server/src/types.ts` field for field. Every rename is a silent drift. */
 
 export const GAP_CATEGORIES = [
   'error_handling',
@@ -25,10 +17,9 @@ export const CRITERION_STATUSES = ['full', 'partial', 'missing', 'needs_review']
 
 export type CriterionStatus = (typeof CRITERION_STATUSES)[number]
 
-/** The two statuses that represent a gap, and so carry a taxonomy category. */
+/** The two statuses that represent a gap, and so carry a category. */
 export type GapStatus = Extract<CriterionStatus, 'partial' | 'missing'>
 
-/** A cited diff hunk backing a verdict — the audit trail behind a verdict. */
 export interface EvidenceHunk {
   file: string
   lines: string
@@ -40,30 +31,24 @@ interface VerdictBase {
   /** False for criteria that can't be judged from code ("should be fast"). */
   verifiable: boolean
   reason: string
-  /** Cited hunks, or the literal 'none' when nothing in the diff applies. */
   evidence: readonly EvidenceHunk[] | 'none'
   confidence: number
 }
 
-/** A partial/missing verdict. Always categorised — this is what feeds aggregation. */
 export interface GapCriterion extends VerdictBase {
   status: GapStatus
   category: GapCategory
 }
 
-/** A full/needs_review verdict. Not a gap, so there is no category to assign. */
 export interface NonGapCriterion extends VerdictBase {
   status: Exclude<CriterionStatus, GapStatus>
   category: null
 }
 
-/**
- * Discriminated on `status`, exactly as on the server, so "a gap has a
- * category" is enforced by the type rather than by a `?.` at every render site.
- */
+/** Discriminated on `status`, so `.category` needs no `?.` at render sites. */
 export type EvaluatedCriterion = GapCriterion | NonGapCriterion
 
-/** Narrows to the categorised half of the union. See the server's `isGap`. */
+/** Narrows to the categorised half of the union. */
 export function isGap(criterion: EvaluatedCriterion): criterion is GapCriterion {
   return criterion.status === 'partial' || criterion.status === 'missing'
 }
@@ -73,14 +58,10 @@ export interface CategoryCount {
   count: number
 }
 
-/**
- * Counts computed by the server. The client renders these rather than
- * recomputing them: two implementations of the same arithmetic is two chances
- * to disagree, and the header would be the one that looks wrong.
- */
+/** Computed by the server. The client renders these rather than recounting. */
 export interface AnalysisSummary {
   total: number
-  /** Every status present, zero included — the UI renders a fixed row. */
+  /** Every status present, zero included. */
   byStatus: Record<CriterionStatus, number>
   /** Only categories that occurred, highest count first. */
   gapsByCategory: CategoryCount[]
@@ -91,13 +72,13 @@ export interface ScopeSignal {
   changedFiles: number
   citedFiles: number
   uncitedFiles: string[]
-  /** uncited / changed, 0-1. */
   uncitedRatio: number
 }
 
 /** One completed analysis — exactly what `POST /api/analyses` returns. */
 export interface AnalysisReport {
-  id: string
+  /** The database identity column, unlike `EvaluatedCriterion.id` (a string). */
+  id: number
   createdAt: string
   requirementText: string
   prReference: string | null
@@ -108,11 +89,9 @@ export interface AnalysisReport {
 
 export interface CategoryStat {
   category: GapCategory
-  /** Total gap occurrences. */
   count: number
   /** Distinct analyses it appeared in — recurrence, not volume. */
   analyses: number
-  /** count / criterionCount, 0-1. */
   rate: number
 }
 
@@ -124,7 +103,7 @@ export interface GapExample {
   requirementPreview: string
 }
 
-/** A criterion the pipeline couldn't settle — the wording, not the code, is the problem. */
+/** A criterion the pipeline couldn't settle — a wording problem, not a code one. */
 export interface UnsettledCriterion {
   criterionText: string
   reason: string
@@ -139,7 +118,6 @@ export interface InsightSubstrate {
   meanCriteriaPerAnalysis: number
 
   gapCount: number
-  /** Share of criteria that came back partial or missing, 0-1. */
   gapRate: number
   partialCount: number
   missingCount: number
@@ -168,9 +146,9 @@ export type NarrativeSeverity = 'low' | 'medium' | 'high'
 export interface NarrativeCard {
   audience: NarrativeAudience
   finding: string
-  /** Quotes a number that appears in the substrate. */
+  /** Quotes a real substrate number. */
   groundingStat: string
-  /** Explicitly a guess about cause. Rendered as such. */
+  /** A guess about cause, rendered as such. */
   hypothesis: string
   suggestedAction: string
   severity: NarrativeSeverity

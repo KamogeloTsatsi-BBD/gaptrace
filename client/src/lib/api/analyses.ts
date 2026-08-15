@@ -2,11 +2,7 @@ import { request } from './httpClient'
 import type { AnalysisListResponse, CreateAnalysisRequest } from '../../types/api'
 import type { AnalysisReport } from '../../types/domain'
 
-/**
- * One module per API resource, each a thin typed wrapper over `request`. No
- * barrel re-export: importing `lib/api/analyses` must not drag the insights
- * module (and its types) into the same chunk.
- */
+/** One module per resource. No barrel — it would undo the insights code-split. */
 
 export function createAnalysis(
   body: CreateAnalysisRequest,
@@ -24,8 +20,8 @@ export function listAnalyses(
 }
 
 export function getAnalysis(
-  id: string,
+  id: number,
   options: { accessToken?: string; signal?: AbortSignal } = {},
 ): Promise<AnalysisReport> {
-  return request<AnalysisReport>(`/analyses/${encodeURIComponent(id)}`, options)
+  return request<AnalysisReport>(`/analyses/${id}`, options)
 }

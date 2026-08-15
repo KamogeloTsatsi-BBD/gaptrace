@@ -4,11 +4,7 @@ interface EvidenceListProps {
   evidence: readonly EvidenceHunk[] | 'none'
 }
 
-/**
- * The audit trail behind a verdict. `'none'` is a real answer from the model —
- * "nothing in this diff addresses the criterion" — not a missing value, so it
- * is stated rather than rendered as an empty list.
- */
+/** `'none'` is a real answer from the model, so it is stated, not left empty. */
 export function EvidenceList({ evidence }: EvidenceListProps) {
   if (evidence === 'none' || evidence.length === 0) {
     return <p className="no-evidence">None found in this diff.</p>
