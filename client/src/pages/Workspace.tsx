@@ -1,6 +1,5 @@
 import { Suspense, lazy, useCallback, useState, useTransition } from 'react'
 import { AppShell, type AppPage } from '../components/layout/AppShell'
-import { Notice } from '../components/ui/Notice'
 import { AnalysisPage } from './AnalysisPage'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { useAuth } from '../auth/useAuth'
@@ -15,7 +14,7 @@ const InsightsFallback = (
 )
 
 export function Workspace() {
-  const { accessToken, configured } = useAuth()
+  const { accessToken } = useAuth()
   const [page, setPage] = useState<AppPage>('analysis')
   // Held here, not in the page: navigating away and back must not discard a
   // report that cost one model call per criterion.
@@ -29,19 +28,12 @@ export function Workspace() {
 
   return (
     <AppShell page={page} onNavigate={navigate}>
-      {configured ? null : (
-        <Notice tone="info" title="Demo configuration">
-          Add Supabase values to <code>.env</code> to enable email authentication. The UI
-          uses example data until the API is available.
-        </Notice>
-      )}
-
       {page === 'insights' ? (
         <Suspense fallback={InsightsFallback}>
           <InsightsPage />
         </Suspense>
       ) : (
-        <AnalysisPage analysis={analysis} demoMode={!configured} />
+        <AnalysisPage analysis={analysis} />
       )}
     </AppShell>
   )

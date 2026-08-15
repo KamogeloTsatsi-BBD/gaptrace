@@ -9,7 +9,7 @@ interface FormMessage {
 }
 
 /** Uncontrolled fields: nothing derives from a half-typed password. */
-export function AuthForm({ preview = false }: { preview?: boolean }) {
+export function AuthForm() {
   const { configured, signIn, signUp } = useAuth()
   const [mode, setMode] = useState<Mode>('signIn')
   const [message, setMessage] = useState<FormMessage | null>(null)
@@ -21,9 +21,9 @@ export function AuthForm({ preview = false }: { preview?: boolean }) {
     // continuation resumes.
     const fields = new FormData(event.currentTarget)
 
-    if (preview || !configured) {
+    if (!configured) {
       setMessage({
-        text: 'Login is a visual preview until Supabase is configured.',
+        text: 'Authentication is not configured in this workspace.',
         tone: 'status',
       })
       return
@@ -62,10 +62,6 @@ export function AuthForm({ preview = false }: { preview?: boolean }) {
 
       <section className="auth-card" aria-labelledby="auth-form-title">
         <h2 id="auth-form-title">{isSignIn ? 'Welcome back' : 'Create your account'}</h2>
-        {preview ? (
-          <p className="field-help">Design preview — authentication is not connected.</p>
-        ) : null}
-
         <form onSubmit={handleSubmit}>
           <section className="field">
             <label htmlFor="auth-email">Email</label>

@@ -13,8 +13,7 @@ interface InsightsViewProps {
   error: string
   generating: boolean
   generateError: string
-  /** Omitted when narration is unavailable, as on the unconfigured demo path. */
-  onGenerate?: () => void
+  onGenerate: () => void
 }
 
 function toStats(substrate: InsightSubstrate): Stat[] {
@@ -67,7 +66,7 @@ export function InsightsView({
   }
 
   const narrative = data.narrative
-  const canGenerate = Boolean(onGenerate) && data.canNarrate && (data.stale || !narrative)
+  const canGenerate = data.canNarrate && (data.stale || !narrative)
 
   return (
     <section className="insights" aria-labelledby="insights-title">
