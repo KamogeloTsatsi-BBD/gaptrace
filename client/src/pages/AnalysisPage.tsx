@@ -1,4 +1,4 @@
-import { AnalysisForm } from '../components/analysis/AnalysisForm'
+import { TraceWizard } from '../components/analysis/TraceWizard'
 import { ReportView } from '../components/report/ReportView'
 import { Notice } from '../components/ui/Notice'
 import type { useAnalysis } from '../hooks/useAnalysis'
@@ -30,7 +30,7 @@ export function AnalysisPage({ analysis }: AnalysisPageProps) {
         </Notice>
       ) : null}
 
-      <AnalysisForm onSubmit={submit} submitting={submitting} />
+      <TraceWizard onSubmit={submit} submitting={submitting} />
     </>
   )
 }
