@@ -85,14 +85,5 @@ export function useInsights(accessToken?: string) {
     }
   }, [accessToken])
 
-  /** Seeds the dashboard for the unconfigured demo path. */
-  const showExample = useCallback(
-    (data: InsightsResponse) => {
-      loaded.current = true
-      setState({ ...IDLE, data })
-    },
-    [],
-  )
-
-  return { ...state, load, generate, showExample }
+  return { ...state, load, generate }
 }

@@ -58,11 +58,5 @@ export function useAnalysis(accessToken?: string) {
 
   const reset = useCallback(() => setState(IDLE), [])
 
-  /** Lets the demo path seed a report without pretending a request happened. */
-  const showReport = useCallback(
-    (report: AnalysisReport) => setState({ report, submitting: false, error: null }),
-    [],
-  )
-
-  return { ...state, submit, reset, showReport }
+  return { ...state, submit, reset }
 }
