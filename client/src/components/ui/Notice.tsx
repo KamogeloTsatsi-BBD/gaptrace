@@ -10,11 +10,7 @@ interface NoticeProps {
   action?: ReactNode
 }
 
-/**
- * The one banner. Previously each caller hand-rolled its own `<aside>` with a
- * bespoke class, which is how two notices end up disagreeing about whether
- * they announce themselves to a screen reader.
- */
+/** The one banner, so notices can't disagree about announcing themselves. */
 export function Notice({ tone, title, children, action }: NoticeProps) {
   return (
     <aside

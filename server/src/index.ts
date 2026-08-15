@@ -1,10 +1,16 @@
 import './lib/loadEnv.js'
 
-// Checked before app.js is imported: constructing the Anthropic client throws
-// on a missing key, and that failure surfaces as an SDK-internal stack trace
-// with no hint about the .env file. Fail here instead, legibly.
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('ANTHROPIC_API_KEY is not set. Copy .env.example to .env at the repo root and fill it in.')
+// Checked before app.js is imported, so a missing key fails legibly rather than
+// as an SDK stack trace. Supabase is not optional: a server that booted without
+// a database would accept analyses, pay for them and drop them.
+const REQUIRED_ENV = ['ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY']
+
+const missing = REQUIRED_ENV.filter((name) => !process.env[name])
+if (missing.length > 0) {
+  console.error(
+    `${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not set. ` +
+      'Copy .env.example to .env at the repo root and fill it in.',
+  )
   process.exit(1)
 }
 

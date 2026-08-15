@@ -1,6 +1,5 @@
 import { memo, useMemo } from 'react'
 
-/** Beyond this the preview stops being readable and starts being a cost. */
 const MAX_PREVIEW_LINES = 500
 
 type DiffLineKind =
@@ -16,8 +15,7 @@ interface DiffLine {
 }
 
 function classifyLine(line: string): DiffLineKind {
-  // Ordered by specificity: the file markers `+++`/`---` must be caught before
-  // the single-character addition and deletion tests.
+  // Ordered by specificity: `+++`/`---` must be caught before the +/- tests.
   if (line.startsWith('+++ ') || line.startsWith('--- ') || line.startsWith('diff --git')) {
     return 'diff-file'
   }
@@ -38,18 +36,14 @@ function parseDiff(diff: string): ParsedDiff {
   const visible = rawLines.length > MAX_PREVIEW_LINES
   const shown = visible ? rawLines.slice(0, MAX_PREVIEW_LINES) : rawLines
   return {
-    // Classify once, here, rather than during render of each row.
+    // Classified once here rather than during each row's render.
     lines: shown.map((text) => ({ kind: classifyLine(text), text })),
     totalLines: rawLines.length,
     truncated: visible,
   }
 }
 
-/**
- * Rows are memoised individually because the parent re-renders on every
- * keystroke in the textarea beside it, while any given line's content changes
- * only when that line is edited.
- */
+/** Memoised per row: the parent re-renders on every keystroke in the textarea. */
 const DiffRow = memo(function DiffRow({ kind, text }: DiffLine) {
   return (
     <li className={kind}>
@@ -60,8 +54,8 @@ const DiffRow = memo(function DiffRow({ kind, text }: DiffLine) {
 
 export function DiffPreview({ diff }: { diff: string }) {
   const trimmed = diff.trim()
-  // Splitting and classifying up to 500 lines on every keystroke is the single
-  // most expensive thing this form does; it depends only on the diff text.
+  // Classifying up to 500 lines per keystroke is the most expensive thing this
+  // form does, and it depends only on the diff text.
   const parsed = useMemo(() => (trimmed ? parseDiff(diff) : null), [diff, trimmed])
 
   if (!parsed) return null
@@ -78,8 +72,7 @@ export function DiffPreview({ diff }: { diff: string }) {
       </header>
       <ol className="diff-preview" aria-label="Pasted diff preview">
         {parsed.lines.map((line, index) => (
-          // Lines are identified by position: two identical lines in a diff are
-          // genuinely interchangeable, and the list is never reordered.
+          // Keyed by position: the list is never reordered.
           <DiffRow key={index} kind={line.kind} text={line.text} />
         ))}
       </ol>

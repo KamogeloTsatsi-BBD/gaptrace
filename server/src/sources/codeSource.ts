@@ -1,14 +1,7 @@
-/**
- * CodeSource adapter: whatever the user gave us -> diff text.
- *
- * Runs in front of the pipeline, so nothing downstream knows or cares whether
- * the diff was pasted or fetched. Adding an authenticated source later means
- * adding a branch here and nothing else.
- */
+/** Whatever the user gave us -> diff text. Nothing downstream knows which. */
 import { InvalidInputError, SourceUnavailableError } from '../lib/errors.js'
 import { MAX_DIFF_CHARS } from '../services/groundedComparator.js'
 
-/** Fetching a diff shouldn't hold an analysis request open. */
 const FETCH_TIMEOUT_MS = 15_000
 
 export type CodeSourceInput =
@@ -17,16 +10,12 @@ export type CodeSourceInput =
 
 export interface ResolvedCode {
   diffText: string
-  /** The PR/MR URL when link-ingested, so the report can link back to it. */
+  /** The PR/MR URL when link-ingested, else null. */
   prReference: string | null
 }
 
-/**
- * Only these two forms are recognised, and the fetch URL is rebuilt from the
- * captured parts rather than from the string the user sent. That's the SSRF
- * guard: an attacker can't smuggle an internal host through, because nothing
- * of theirs but owner/repo/number survives into the outbound request.
- */
+// The SSRF guard: the outbound URL is rebuilt from the captured parts, so
+// nothing user-supplied but owner/repo/number reaches the fetch.
 const PR_PATTERNS: readonly {
   host: string
   pattern: RegExp
@@ -44,7 +33,6 @@ const PR_PATTERNS: readonly {
   },
 ]
 
-/** @throws {InvalidInputError} when the URL isn't a recognised public PR/MR. */
 function toDiffUrl(prUrl: string): string {
   for (const { pattern, diffUrl } of PR_PATTERNS) {
     const match = pattern.exec(prUrl.trim())
@@ -56,10 +44,6 @@ function toDiffUrl(prUrl: string): string {
   )
 }
 
-/**
- * @throws {InvalidInputError} when the URL isn't a recognised public PR/MR.
- * @throws {SourceUnavailableError} when the diff can't be retrieved.
- */
 async function fetchPrDiff(prUrl: string): Promise<string> {
   const diffUrl = toDiffUrl(prUrl)
 
@@ -71,8 +55,6 @@ async function fetchPrDiff(prUrl: string): Promise<string> {
       redirect: 'follow',
     })
   } catch {
-    // Network failure or timeout. The cause is deliberately not surfaced —
-    // it's noise to the user, and the paste path is always available.
     throw new SourceUnavailableError(
       "Couldn't reach the host to fetch that diff. Paste the diff instead.",
     )
@@ -89,10 +71,8 @@ async function fetchPrDiff(prUrl: string): Promise<string> {
     )
   }
 
-  // A 200 is not enough. When the number belongs to an issue rather than a
-  // pull request, GitHub redirects …/pull/N.diff to …/issues/N and serves the
-  // issue page with a 200 — a quarter-megabyte of HTML that would sail into
-  // the model as if it were a diff. Both hosts serve real diffs as text/plain.
+  // A 200 is not enough: for an issue number, GitHub redirects …/pull/N.diff
+  // to …/issues/N and serves HTML, which would reach the model as a diff.
   const contentType = response.headers.get('content-type') ?? ''
   if (!contentType.startsWith('text/plain')) {
     throw new SourceUnavailableError(
@@ -100,8 +80,7 @@ async function fetchPrDiff(prUrl: string): Promise<string> {
     )
   }
 
-  // Check the advertised size before buffering, so an enormous PR is rejected
-  // rather than pulled into memory only to fail the length check below.
+  // Checked before buffering, so an enormous PR is rejected rather than read in.
   const declared = Number(response.headers.get('content-length'))
   if (Number.isFinite(declared) && declared > MAX_DIFF_CHARS) {
     throw new SourceUnavailableError(
@@ -111,8 +90,7 @@ async function fetchPrDiff(prUrl: string): Promise<string> {
 
   const diffText = await response.text()
 
-  // Belt to the content-type's braces: a diff that carries no file header is
-  // not a diff, whatever it was served as.
+  // A body with no file header is not a diff, whatever it was served as.
   if (!/^diff --git |^--- |^Index: |^From [0-9a-f]{7,}/m.test(diffText)) {
     throw new SourceUnavailableError(
       "That link didn't return a diff. Check it points at a pull request and not an issue.",
@@ -122,10 +100,6 @@ async function fetchPrDiff(prUrl: string): Promise<string> {
   return diffText
 }
 
-/**
- * @throws {InvalidInputError} when the input is empty or the URL is unrecognised.
- * @throws {SourceUnavailableError} when a linked diff can't be retrieved.
- */
 export async function resolveCodeSource(input: CodeSourceInput): Promise<ResolvedCode> {
   if (input.kind === 'diff') {
     if (input.diffText.trim().length === 0) {

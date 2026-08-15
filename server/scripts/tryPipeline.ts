@@ -1,11 +1,8 @@
 /**
- * Hand-test the parse -> compare steps against a requirement/diff pair.
+ * Hand-test parse -> compare against a requirement/diff pair.
  *
  *   npm run try                          # built-in sample pair
  *   npm run try -- req.txt diff.patch    # your own files
- *
- * Prints the parsed criteria and each verdict, so you can iterate on the
- * prompts until the output is reliable.
  */
 import '../src/lib/loadEnv.js'
 import { readFileSync } from 'node:fs'

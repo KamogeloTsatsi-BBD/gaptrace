@@ -1,10 +1,6 @@
 /**
- * Map over items with a bounded number of in-flight promises, preserving
- * input order in the result.
- *
- * On failure, no further items are scheduled, but every worker already in
- * flight is awaited before the first error is rethrown — so the caller never
- * leaves dangling promises behind.
+ * Bounded in-flight promises, input order preserved. On failure, in-flight
+ * workers are awaited before the first error is rethrown — nothing dangles.
  */
 export async function mapWithLimit<T, R>(
   items: readonly T[],

@@ -1,17 +1,4 @@
-/**
- * Pure counting over verdicts. No I/O, no AI — the numbers the UI shows and
- * the narrator quotes are true by construction.
- *
- * `summariseCriteria` is per-report, computed once at analysis time.
- * `buildSubstrate` is the cross-analysis read; when Supabase lands, its counting
- * half becomes SQL in a repository and the sampling half stays here. Its return
- * type is the contract the client and the narrator code against either way.
- *
- * Determinism is a requirement, not a nicety: the narrative cache is keyed on a
- * hash of the substrate, so every list below is sorted with a stable tie-break
- * and every float is rounded. A value that wobbled between identical inputs
- * would bill for a fresh model call on every fetch.
- */
+/** Stably sorted and rounded throughout: the cache is keyed on a hash of this. */
 import { CRITERION_STATUSES, isGap } from '../types.js'
 import type {
   AnalysisReport,
@@ -26,15 +13,9 @@ import type {
   UnsettledCriterion,
 } from '../types.js'
 
-/**
- * Caps on what reaches the model. Cost per generation is bounded by these, not
- * by how much history has accumulated — one narration costs about the same at
- * 500 analyses as at 10.
- */
+// Caps on what reaches the model, so cost per generation does not grow with history.
 const GAP_EXAMPLES_PER_CATEGORY = 3
 const MAX_UNSETTLED = 12
-
-/** Enough of the requirement to recognise it; the narrator judges wording, not detail. */
 const PREVIEW_CHARS = 180
 
 function zeroedStatusCounts(): Record<CriterionStatus, number> {
@@ -44,7 +25,7 @@ function zeroedStatusCounts(): Record<CriterionStatus, number> {
   >
 }
 
-/** Highest count first; ties broken by name so the order is stable per render. */
+/** Highest count first; ties broken by name so the order is stable. */
 function rank(counts: Map<GapCategory, number>): CategoryCount[] {
   return [...counts]
     .map(([category, count]) => ({ category, count }))
@@ -55,7 +36,7 @@ function ratio(part: number, whole: number): number {
   return whole === 0 ? 0 : round(part / whole)
 }
 
-/** Rounded so floating-point noise cannot change the cache key. */
+/** Rounded so floating-point noise can't change the cache key. */
 function round(value: number): number {
   return Math.round(value * 1000) / 1000
 }
@@ -81,15 +62,10 @@ export function summariseCriteria(criteria: readonly EvaluatedCriterion[]): Anal
   return { total: criteria.length, byStatus, gapsByCategory: rank(categories) }
 }
 
-/**
- * Cross-analysis substrate. Keeps the **wording** behind each signal, not just
- * counts — a narrator given only totals can say "validation gaps are common"
- * but cannot say "and these three criteria were too vague to check", which is
- * the observation that makes the dashboard worth reading.
- */
+/** Keeps the wording behind each signal, not just the counts. */
 export function buildSubstrate(reports: readonly AnalysisReport[]): InsightSubstrate {
   const counts = new Map<GapCategory, number>()
-  const analysesWithCategory = new Map<GapCategory, Set<string>>()
+  const analysesWithCategory = new Map<GapCategory, Set<number>>()
   const examplesByCategory = new Map<GapCategory, GapExample[]>()
   const unsettled: UnsettledCriterion[] = []
 
@@ -119,9 +95,6 @@ export function buildSubstrate(reports: readonly AnalysisReport[]): InsightSubst
         needsReviewCount += 1
       }
 
-      // Both kinds are wording problems, but different ones: not_verifiable was
-      // caught at parse time and cost nothing; needs_review survived to the
-      // comparator and still couldn't be settled.
       if (!criterion.verifiable || criterion.status === 'needs_review') {
         unsettled.push({
           criterionText: criterion.text,
@@ -140,7 +113,7 @@ export function buildSubstrate(reports: readonly AnalysisReport[]): InsightSubst
       const { category } = criterion
       counts.set(category, (counts.get(category) ?? 0) + 1)
 
-      const seen = analysesWithCategory.get(category) ?? new Set<string>()
+      const seen = analysesWithCategory.get(category) ?? new Set<number>()
       seen.add(report.id)
       analysesWithCategory.set(category, seen)
 
@@ -189,8 +162,7 @@ export function buildSubstrate(reports: readonly AnalysisReport[]): InsightSubst
       analysesOverHalfUncited,
     },
 
-    // Ordered by category so the sample is stable regardless of which analysis
-    // happened to contribute first.
+    // Ordered by category so the sample is stable whichever analysis contributed first.
     gapExamples: categories.flatMap(({ category }) => examplesByCategory.get(category) ?? []),
     unsettledCriteria: unsettled.slice(0, MAX_UNSETTLED),
   }

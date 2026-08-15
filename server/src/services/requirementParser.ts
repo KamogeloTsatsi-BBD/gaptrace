@@ -5,13 +5,10 @@ import type { AiDeps } from '../lib/claude.js'
 import { InvalidInputError } from '../lib/errors.js'
 import type { ParsedCriterion } from '../types.js'
 
-/** Requirement text is a ticket body, not a document. */
+/** A ticket body, not a document. */
 export const MAX_REQUIREMENT_CHARS = 50_000
 
-/**
- * Ceiling on criteria per requirement. The comparator fires one call per
- * criterion, so an unbounded list is an unbounded bill.
- */
+/** The comparator bills one call per criterion, so this is the ceiling. */
 export const MAX_CRITERIA = 50
 
 const ParsedCriteria = z.object({
@@ -42,13 +39,7 @@ Set verifiable to false for criteria that cannot be judged by reading code — "
 should feel fast", "the UX should be intuitive", anything needing a human,
 a running system, or a design review to settle. Everything else is verifiable.`
 
-/**
- * Step 1 of the pipeline: requirement text -> discrete criteria.
- * IDs are assigned here so the rest of the pipeline has stable handles.
- *
- * @throws {InvalidInputError} when the requirement is empty, oversized, or
- * yields more than MAX_CRITERIA criteria.
- */
+/** Ids are assigned here, so the rest of the pipeline has stable handles. */
 export async function parseRequirement(
   requirementText: string,
   deps: AiDeps = defaultAiDeps,

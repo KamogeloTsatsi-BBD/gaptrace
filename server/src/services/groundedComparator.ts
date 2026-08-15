@@ -9,13 +9,9 @@ import type { Logger } from '../lib/logger.js'
 import { GAP_CATEGORIES } from '../types.js'
 import type { CriterionVerdict, EvaluatedCriterion, ParsedCriterion } from '../types.js'
 
-/** Cap on concurrent comparator calls. */
 const CONCURRENCY = 4
 
-/**
- * The diff is re-sent on every criterion call, so an oversized one is both a
- * hard API failure and a cost multiplier. Roughly 75k tokens.
- */
+/** The diff is re-sent per criterion, so an oversized one multiplies cost. ~75k tokens. */
 export const MAX_DIFF_CHARS = 300_000
 
 export interface ComparatorDeps extends AiDeps {
@@ -27,8 +23,7 @@ const defaultComparatorDeps: ComparatorDeps = { ...defaultAiDeps, logger: consol
 const Verdict = z.object({
   status: z.enum(['full', 'partial', 'missing', 'needs_review']),
   reason: z.string().describe('One sentence. Say what the diff does or fails to do.'),
-  // Modelled as a plain array rather than an array|"none" union to keep the
-  // enforced schema simple; an empty array is normalised to 'none' below.
+  // An empty array is normalised to 'none' below, keeping the schema a plain array.
   evidence: z
     .array(
       z.object({
@@ -69,23 +64,13 @@ describes the nature of the gap. Use null for full and needs_review.
 Confidence is a secondary signal — how sure you are, given that a diff is a
 partial view. Do not inflate it to look decisive.`
 
-/**
- * The schema cannot express numeric bounds, so the model's confidence is
- * unconstrained on arrival. The criteria table declares
- * `check (confidence between 0 and 1)`, so clamp here rather than discovering
- * it as a constraint violation at insert time.
- */
+/** The schema can't bound numbers, but `criteria` has a CHECK that would reject it. */
 function clampConfidence(value: number): number {
   if (!Number.isFinite(value)) return 0
   return Math.min(1, Math.max(0, value))
 }
 
-/**
- * Step 2 of the pipeline: one verifiable criterion + diff -> grounded verdict.
- *
- * The diff sits in a cached system block so the per-criterion calls in a batch
- * share it; the criterion itself goes in the user turn, after the breakpoint.
- */
+/** The diff sits in a cached system block so calls in a batch share it. */
 async function compareOne(
   criterion: ParsedCriterion,
   diffText: string,
@@ -120,17 +105,14 @@ async function compareOne(
     confidence: clampConfidence(verdict.confidence),
   }
 
-  // Don't trust the model to have honoured the status/category pairing: a
-  // category on a `full` verdict, or a gap with none, would both corrupt the
-  // aggregation. 'other' is the taxonomy's escape hatch for an uncategorised gap.
+  // Re-enforce the status/category pairing; either mismatch corrupts aggregation.
   const { status } = verdict
   if (status !== 'partial' && status !== 'missing') {
     return { ...base, status, category: null }
   }
 
   if (verdict.category === null) {
-    // Otherwise an uncategorised gap is indistinguishable from a genuine
-    // 'other' in the dashboard, and the prompt regression stays invisible.
+    // The 'other' fallback below is indistinguishable from a genuine 'other'.
     deps.logger.warn('groundedComparator: gap verdict had no category; defaulting to other', {
       criterionId: criterion.id,
       status,
@@ -151,10 +133,7 @@ function notVerifiable(): CriterionVerdict {
   }
 }
 
-/**
- * A failed call collapses into needs_review rather than sinking the batch.
- * (Open question A in the spec — revisit if a distinct error state is wanted.)
- */
+/** A failed call collapses into needs_review rather than sinking the batch. */
 function couldNotEvaluate(criterionId: string, error: unknown, logger: Logger): CriterionVerdict {
   logger.error('groundedComparator: criterion evaluation failed', {
     criterionId,
@@ -169,20 +148,7 @@ function couldNotEvaluate(criterionId: string, error: unknown, logger: Logger): 
   }
 }
 
-/**
- * Evaluate every criterion against the diff.
- *
- * The first verifiable criterion runs alone so it writes the diff into the
- * prompt cache; the rest fan out and read it. Firing them all at once would
- * make every call miss, since the cache isn't readable until the first
- * response starts.
- *
- * Verdicts are tracked by position, not by criterion id — the caller owns
- * those ids and duplicates among them would otherwise silently pair a
- * criterion with another's verdict.
- *
- * @throws {InvalidInputError} when the diff is empty or oversized.
- */
+/** Tracked by position, not id: duplicate ids would mispair criteria and verdicts. */
 export async function compareAll(
   criteria: readonly ParsedCriterion[],
   diffText: string,
@@ -221,6 +187,8 @@ export async function compareAll(
     }
   }
 
+  // The first call runs alone to write the diff into the prompt cache. Firing
+  // them all at once would make every one miss.
   const [warmup, ...rest] = pending
   if (warmup !== undefined) await evaluate(warmup)
   await mapWithLimit(rest, CONCURRENCY, evaluate)
