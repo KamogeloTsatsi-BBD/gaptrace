@@ -22,9 +22,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const client = supabase
     if (!client) return undefined
 
-    // The subscription is attached before the initial lookup resolves, so a
-    // sign-in that lands mid-lookup is not lost. `onAuthStateChange` fires
-    // last and wins, which is the ordering we want.
+    // Attached before the initial lookup resolves, so a sign-in landing
+    // mid-lookup is not lost — `onAuthStateChange` fires last and wins.
     const { data: listener } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
       setReady(true)
@@ -33,8 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     client.auth
       .getSession()
       .then(({ data }) => setSession(data.session))
-      // A failed lookup means signed out, not broken — the sign-in form is the
-      // correct destination either way, and hanging on the splash is not.
+      // A failed lookup means signed out, not broken.
       .catch(() => setSession(null))
       .finally(() => setReady(true))
 

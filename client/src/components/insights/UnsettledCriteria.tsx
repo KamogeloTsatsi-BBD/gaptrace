@@ -5,11 +5,7 @@ const KIND_LABELS: Readonly<Record<UnsettledCriterion['kind'], string>> = {
   needs_review: 'Could not be settled',
 }
 
-/**
- * The analyst-facing half of the dashboard: criteria whose *wording*, not
- * whose code, was the problem. Counts alone would say "a third needs review";
- * quoting the criteria says which sentences to rewrite.
- */
+/** Quotes the criteria, not just the count, so a BA knows which to reword. */
 export function UnsettledCriteria({
   criteria,
 }: {

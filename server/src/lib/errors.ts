@@ -1,10 +1,4 @@
-/**
- * Errors the HTTP layer knows how to turn into a response.
- *
- * `code` is the stable, machine-readable half of the contract — the client
- * branches on it; `message` is prose meant to be shown to a person and may be
- * reworded freely.
- */
+/** The client branches on `code`; `message` is prose and may be reworded freely. */
 export abstract class AppError extends Error {
   abstract readonly status: number
   abstract readonly code: string
@@ -21,12 +15,7 @@ export class InvalidInputError extends AppError {
   }
 }
 
-/**
- * A PR link was valid in shape but the diff couldn't be fetched — private,
- * deleted, oversized, or the host was unreachable. Distinct from
- * `invalid_input` because the fix is different: the user pastes the diff
- * instead of correcting the URL.
- */
+/** Distinct from `invalid_input`: the fix is to paste the diff, not fix the URL. */
 export class SourceUnavailableError extends AppError {
   readonly status = 422
   readonly code = 'source_unavailable'
@@ -45,6 +34,17 @@ export class UpstreamError extends AppError {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options)
     this.name = 'UpstreamError'
+  }
+}
+
+/** There is deliberately no 403: another user's analysis is absent, not forbidden. */
+export class UnauthorizedError extends AppError {
+  readonly status = 401
+  readonly code = 'unauthorized'
+
+  constructor(message = 'Sign in to continue.') {
+    super(message)
+    this.name = 'UnauthorizedError'
   }
 }
 

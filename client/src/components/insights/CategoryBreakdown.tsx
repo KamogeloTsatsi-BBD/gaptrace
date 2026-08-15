@@ -1,12 +1,7 @@
 import { CATEGORY_LABELS, formatRate } from '../../lib/format'
 import type { CategoryStat } from '../../types/domain'
 
-/**
- * Shows recurrence alongside volume. Ten validation gaps in one bad pull
- * request and ten spread across ten of them are the same count and completely
- * different problems, so `analyses` is rendered next to `count` rather than
- * folded into it.
- */
+/** Renders recurrence beside volume: ten gaps in one PR is not ten across ten. */
 export function CategoryBreakdown({ categories }: { categories: readonly CategoryStat[] }) {
   if (categories.length === 0) return null
 

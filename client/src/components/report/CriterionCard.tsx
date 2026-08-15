@@ -9,11 +9,7 @@ interface CriterionCardProps {
   number: number
 }
 
-/**
- * One verdict, with the evidence that produced it. Memoised because a report
- * can carry dozens of these and nothing about a card changes once the report
- * has loaded.
- */
+/** Memoised: a report carries dozens, and none change once it has loaded. */
 export const CriterionCard = memo(function CriterionCard({
   criterion,
   number,
@@ -42,8 +38,7 @@ export const CriterionCard = memo(function CriterionCard({
       </section>
 
       <footer>
-        {/* The guard, not a null check: only partial and missing carry a
-            category, and the discriminated union says so. */}
+        {/* The guard, not a null check — the union says only gaps have one. */}
         {isGap(criterion) ? (
           <span className="category">{CATEGORY_LABELS[criterion.category]}</span>
         ) : null}

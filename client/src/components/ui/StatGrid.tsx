@@ -10,11 +10,7 @@ interface StatGridProps {
   stats: readonly Stat[]
 }
 
-/**
- * The figure row used by both the report header and the insights dashboard.
- * One component so the two cannot drift apart visually, and so a change to
- * how a figure is announced happens once.
- */
+/** Shared by the report header and the insights dashboard, so they can't drift. */
 export function StatGrid({ label, stats }: StatGridProps) {
   return (
     <section className="summary" aria-label={label}>

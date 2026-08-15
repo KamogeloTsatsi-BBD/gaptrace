@@ -6,13 +6,7 @@ export interface AuthUser {
   email: string | null
 }
 
-/**
- * A normalised result rather than Supabase's own response type.
- *
- * The UI should be able to sign a user in without importing an SDK type;
- * swapping the provider then means rewriting one file instead of every form
- * that touches authentication.
- */
+/** Normalised, so no form has to import a Supabase SDK type. */
 export interface AuthResult {
   error: { message: string } | null
 }

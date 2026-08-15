@@ -1,13 +1,6 @@
 import type { CriterionStatus, GapCategory, NarrativeAudience, NarrativeSeverity } from '../types/domain'
 
-/**
- * Every user-facing string derived from a domain value lives here, so a label
- * is written once and the components stay presentation-only.
- *
- * The lookups are `Record<Union, string>` rather than a function with a
- * `default` branch: adding a status or a category to the taxonomy then fails
- * the typecheck here instead of silently rendering a raw enum in the UI.
- */
+/** `Record<Union, string>`, so extending the taxonomy fails the typecheck here. */
 
 export const STATUS_LABELS: Readonly<Record<CriterionStatus, string>> = {
   full: 'Full',
@@ -39,8 +32,7 @@ export const AUDIENCE_LABELS: Readonly<Record<NarrativeAudience, string>> = {
   both: 'For the whole team',
 }
 
-// Constructed once. `new Intl.DateTimeFormat()` per render is a measurable cost
-// in a list, and this one has no per-call configuration to vary.
+// Constructed once: `new Intl.DateTimeFormat()` per render costs measurably in a list.
 const dateTimeFormat = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
   timeStyle: 'short',

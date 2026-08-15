@@ -1,24 +1,12 @@
+import { supabase } from '../supabase'
 import type { ApiErrorBody, ApiErrorCode } from '../../types/api'
 
-/**
- * Same-origin by default. Vite proxies `/api` to the server in development and
- * the built client is served behind the same origin in production, so the
- * browser never makes a cross-origin request and the server needs no CORS
- * layer. An absolute base URL is available as an escape hatch for split
- * deployments, but it is not the happy path.
- */
+/** Same-origin by default, so there is no cross-origin request and no CORS layer. */
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 const JSON_HEADERS: Readonly<Record<string, string>> = { 'Content-Type': 'application/json' }
 
-/**
- * A failed request, carrying the server's stable `code` alongside the
- * user-safe message.
- *
- * The code is the point: it lets a caller branch on *why* something failed
- * ("the PR could not be fetched — paste the diff instead") without matching on
- * prose that is written to be read, not parsed.
- */
+/** Carries the server's stable `code`, so callers branch on it, not on prose. */
 export class ApiError extends Error {
   readonly code: ApiErrorCode | string
   readonly status: number
@@ -36,7 +24,6 @@ export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
 }
 
-/** Narrows an unknown rejection to something displayable. */
 export function toMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) return error.message
   if (error instanceof Error) return error.message
@@ -68,14 +55,10 @@ export interface RequestOptions {
   body?: unknown
   /** Bearer token; omitted entirely when the user is not signed in. */
   accessToken?: string
-  /** Lets a caller cancel a request whose result it no longer needs. */
   signal?: AbortSignal
 }
 
-/**
- * The single place a network call is made. Every caller gets the same error
- * translation, so no component ever has to know the envelope shape.
- */
+/** The single place a network call is made, so error translation happens once. */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, accessToken, signal } = options
 
@@ -95,6 +78,16 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError('The server could not be reached.', 'network_error', 0)
   }
 
-  if (!response.ok) throw await toApiError(response)
+  if (!response.ok) {
+    const error = await toApiError(response)
+
+    // The session the UI is showing does not exist; signing out lets
+    // `onAuthStateChange` return to the sign-in screen. Not awaited — the
+    // caller is owed its rejection now.
+    if (error.code === 'unauthorized') void supabase?.auth.signOut()
+
+    throw error
+  }
+
   return (await response.json()) as T
 }
