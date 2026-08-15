@@ -33,24 +33,26 @@ export function CodeSourceFields({
       <h2 className="fieldset-title">Code source</h2>
 
       <section className="source-toggle" aria-label="Code source type">
-        <label>
+        <label htmlFor="source-diff">
           <input
             type="radio"
+            id="source-diff"
             name="source-type"
             value="diff"
             checked={kind === 'diff'}
             onChange={() => onKindChange('diff')}
-          />{' '}
+          />
           Paste diff
         </label>
-        <label>
+        <label htmlFor="source-pr">
           <input
             type="radio"
+            id="source-pr"
             name="source-type"
             value="pr"
             checked={kind === 'pr'}
             onChange={() => onKindChange('pr')}
-          />{' '}
+          />
           Public PR or MR link
         </label>
       </section>

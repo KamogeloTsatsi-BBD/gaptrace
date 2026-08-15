@@ -2,6 +2,7 @@ export interface Stat {
   /** Stable identity for the list; also the visible label. */
   label: string
   value: string | number
+  tone?: 'full' | 'needs-review' | 'gap' | 'neutral'
 }
 
 interface StatGridProps {
@@ -20,7 +21,7 @@ export function StatGrid({ label, stats }: StatGridProps) {
     <section className="summary" aria-label={label}>
       {stats.map((stat) => (
         <article key={stat.label}>
-          <strong>{stat.value}</strong>
+          <strong className={stat.tone ? `tone--${stat.tone}` : ''}>{stat.value}</strong>
           <span>{stat.label}</span>
         </article>
       ))}

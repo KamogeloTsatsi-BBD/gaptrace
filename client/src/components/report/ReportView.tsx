@@ -19,10 +19,10 @@ interface ReportViewProps {
 function toStats(report: AnalysisReport): Stat[] {
   const { total, byStatus } = report.summary
   return [
-    { label: 'criteria checked', value: total },
-    { label: 'full', value: byStatus.full },
-    { label: 'gaps found', value: byStatus.partial + byStatus.missing },
-    { label: 'needs review', value: byStatus.needs_review },
+    { label: 'criteria checked', value: total, tone: 'neutral' },
+    { label: 'full', value: byStatus.full, tone: 'full' },
+    { label: 'gaps found', value: byStatus.partial + byStatus.missing, tone: 'gap' },
+    { label: 'needs review', value: byStatus.needs_review, tone: 'needs-review' },
   ]
 }
 
