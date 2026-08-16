@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root { color: #172127; background: #f5f7f4; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-synthesis: none; }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
@@ -46,4 +48,29 @@ nav { display: flex; gap: 1.3rem; } .nav-link { background: transparent; border-
 .narrative-header { align-items: end; display: flex; gap: 1.5rem; justify-content: space-between; margin-bottom: .5rem; }.narrative-header h2 { margin-bottom: .3rem; }.narrative-header button { white-space: nowrap; }
 .audience { background: #edf1ef; border-radius: 999px; color: #4a5956; font-size: .72rem; font-weight: 750; padding: .3rem .5rem; white-space: nowrap; }
 .form-message--status { color: #3b4d48; }
+.wizard { display: grid; gap: 2rem; }
+.wizard-progress { align-items: center; display: flex; gap: 0; list-style: none; margin: 0; padding: 0; }
+.wizard-step { align-items: center; display: flex; flex: 1; gap: .65rem; position: relative; }
+.wizard-step:not(:last-child)::after { background: #dce3df; content: ''; flex: 1; height: 2px; margin: 0 .5rem; }
+.wizard-step--complete:not(:last-child)::after { background: #17655c; }
+.wizard-step__indicator { align-items: center; background: #dce3df; border-radius: 999px; color: #53615f; display: grid; font-size: .82rem; font-weight: 800; height: 2rem; justify-content: center; width: 2rem; }
+.wizard-step--active .wizard-step__indicator { background: #17655c; color: #fff; }
+.wizard-step--complete .wizard-step__indicator { background: #17655c; color: #fff; }
+.wizard-step__label { font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.wizard-step--active .wizard-step__label { color: #172127; }
+.wizard-step--complete .wizard-step__label { color: #17655c; }
+.wizard-form { display: grid; gap: 2rem; }
+.wizard-panel { background: #fff; border: 1px solid #dce3df; border-radius: .8rem; margin: 0; padding: 1.5rem; }
+.wizard-panel__title { font-size: 1.1rem; font-weight: 800; margin: 0 0 1.2rem; }
+.wizard-textarea, .wizard-input { background: #fcfdfc; border: 1px solid #bfcac5; border-radius: .45rem; color: #172127; padding: .75rem; resize: vertical; width: 100%; }
+.wizard-textarea { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; line-height: 1.5; min-height: 350px; }
+.wizard-textarea:focus, .wizard-input:focus { border-color: #17655c; outline: 3px solid #c9e4dc; }
+.wizard-sample-btn { background: transparent; border: 1px solid #17655c; color: #17655c; margin-top: .75rem; padding: .5rem .85rem; }
+.wizard-review-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr 1fr; }
+.wizard-review-col { background: #fcfdfc; border: 1px solid #dce3df; border-radius: .45rem; display: grid; gap: .5rem; overflow: hidden; }
+.wizard-review-header { align-items: center; background: #f6f8fa; border-bottom: 1px solid #dce3df; display: flex; justify-content: space-between; padding: .65rem .85rem; }
+.wizard-review-header h3 { font-size: .82rem; font-weight: 800; margin: 0; }
+.wizard-review-preview { font: .82rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; margin: 0; max-height: 20rem; overflow: auto; padding: .85rem; white-space: pre-wrap; word-break: break-word; }
+.wizard-review-preview code { font: inherit; }
+@media (max-width: 720px) { .wizard-progress { flex-direction: column; align-items: flex-start; gap: .5rem; }.wizard-step:not(:last-child)::after { display: none; }.wizard-review-grid { grid-template-columns: 1fr; }.form-footer { align-items: start; flex-direction: column; } }
 @media (max-width: 720px) { .site-header { grid-template-columns: 1fr auto; padding: 1rem 5vw; }.site-header nav { grid-column: 1 / -1; grid-row: 2; }.site-header nav a { padding: .3rem 0 .65rem; }.account { display: none; }.page-content { padding-top: 3rem; }.summary { grid-template-columns: repeat(2, 1fr); }.report-header, .form-footer { align-items: start; flex-direction: column; }.auth-page { grid-template-columns: 1fr; }.auth-introduction { min-height: 38vh; padding: 10vw; }.auth-card { margin: 3rem 8vw; }.category-breakdown li { gap: 1rem; }.narrative-header { align-items: start; flex-direction: column; } }
