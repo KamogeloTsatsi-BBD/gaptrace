@@ -73,10 +73,14 @@ export function CodeSourceFields({
           <label htmlFor="pr-url">Public GitHub or GitLab pull request URL</label>
           <input
             id="pr-url"
+            name="pr-url"
             type="url"
+            inputMode="url"
             value={prUrl}
             onChange={onPrUrlChange}
             placeholder="https://github.com/org/repo/pull/123"
+            spellCheck={false}
+            autoComplete="off"
             required
           />
           <p className="field-help">

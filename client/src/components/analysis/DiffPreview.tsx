@@ -29,17 +29,25 @@ interface ParsedDiff {
   lines: DiffLine[]
   totalLines: number
   truncated: boolean
+  /** Whether anything here reads as a diff at all. */
+  structured: boolean
 }
 
 function parseDiff(diff: string): ParsedDiff {
   const rawLines = diff.split('\n')
   const visible = rawLines.length > MAX_PREVIEW_LINES
   const shown = visible ? rawLines.slice(0, MAX_PREVIEW_LINES) : rawLines
+  // Classified once here rather than during each row's render.
+  const lines = shown.map((text) => ({ kind: classifyLine(text), text }))
   return {
-    // Classified once here rather than during each row's render.
-    lines: shown.map((text) => ({ kind: classifyLine(text), text })),
+    lines,
     totalLines: rawLines.length,
     truncated: visible,
+    // The classifier already knows; the server rejects the same shape, so this
+    // is the warning rather than the rule.
+    structured: lines.some(
+      (line) => line.kind === 'diff-file' || line.kind === 'diff-hunk',
+    ),
   }
 }
 
@@ -64,11 +72,17 @@ export function DiffPreview({ diff }: { diff: string }) {
     <section className="diff-preview-section" aria-labelledby="diff-preview-title">
       <header>
         <h3 id="diff-preview-title">Diff preview</h3>
-        <p>
-          {parsed.truncated
-            ? `Showing the first ${MAX_PREVIEW_LINES} of ${parsed.totalLines} lines.`
-            : `${parsed.totalLines} lines`}
-        </p>
+        {parsed.structured ? (
+          <p>
+            {parsed.truncated
+              ? `Showing the first ${MAX_PREVIEW_LINES} of ${parsed.totalLines} lines.`
+              : `${parsed.totalLines} lines`}
+          </p>
+        ) : (
+          <p className="diff-preview-warning">
+            No file or hunk headers — this will be rejected as not a diff.
+          </p>
+        )}
       </header>
       <ol className="diff-preview" aria-label="Pasted diff preview">
         {parsed.lines.map((line, index) => (

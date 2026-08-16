@@ -11,6 +11,14 @@ import type { InsightSubstrate, NarrativeCard } from '../types.js'
 
 const MAX_CARDS = 6
 
+/**
+ * Folded into the narrative cache key. The cache is a hash of the substrate, so
+ * without this a prompt fix would never reach anyone whose numbers had not
+ * moved — they would keep being served wording this version exists to correct.
+ * Bump it whenever the prompt or the output schema changes.
+ */
+export const NARRATOR_VERSION = 2
+
 const Narrative = z.object({
   cards: z
     .array(
@@ -21,7 +29,9 @@ const Narrative = z.object({
         finding: z.string().describe('One sentence. The pattern, stated plainly.'),
         groundingStat: z
           .string()
-          .describe('The number from the data that supports it, quoted exactly. No invented figures.'),
+          .describe(
+            'Plain English containing the exact figure, e.g. "error handling was the top gap in 4 of 6 analyses". Never a field name or a fragment of the data. No invented figures.',
+          ),
         hypothesis: z
           .string()
           .describe('One sentence on the likely cause, worded as a possibility, not a fact.'),
@@ -46,8 +56,13 @@ the other.
 
 Rules:
 - Every finding must be anchored to a number that appears in the data you were
-  given. Quote it in groundingStat. Never invent or estimate a figure. If the
-  data does not support a finding, do not make it.
+  given. Never invent or estimate a figure. If the data does not support a
+  finding, do not make it.
+- The data arrives as JSON, but every word you write is read by a person. Never
+  put a field name in your output. "meanUncitedRatio: 0.6" is a leaked
+  implementation detail; "on average 60% of changed files were cited by no
+  criterion" is the same fact, said properly. Rates are fractions between 0 and
+  1 — write them as percentages.
 - hypothesis is a guess about cause and must read like one. Wording such as
   "this may indicate" or "one explanation is" — never state a cause as fact.
 - Be constructive and specific. "Devs are careless" is useless; "error handling

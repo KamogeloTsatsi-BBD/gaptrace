@@ -2,14 +2,10 @@ import { useCallback, useState } from 'react'
 import { createAnalysis } from '../lib/api/analyses'
 import { ApiError, isAbortError, toMessage } from '../lib/api/httpClient'
 import { useLatestRequest } from './useLatestRequest'
-import type { CreateAnalysisRequest } from '../types/api'
+import type { AnalysisFailure, CreateAnalysisRequest } from '../types/api'
 import type { AnalysisReport } from '../types/domain'
 
-export interface AnalysisFailure {
-  message: string
-  /** Stable server code, so the UI can offer the right recovery. */
-  code: string
-}
+export type { AnalysisFailure }
 
 export interface AnalysisState {
   report: AnalysisReport | null

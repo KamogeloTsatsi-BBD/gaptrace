@@ -52,6 +52,7 @@ export const LineNumberedTextarea = memo(function LineNumberedTextarea({
       </output>
       <textarea
         id={id}
+        name={id}
         value={value}
         onChange={onChange}
         onScroll={syncScroll}
@@ -59,6 +60,8 @@ export const LineNumberedTextarea = memo(function LineNumberedTextarea({
         rows={rows}
         required={required}
         spellCheck={false}
+        // Pasted specs and diffs are never a saved value; the prompt is noise.
+        autoComplete="off"
       />
     </section>
   )

@@ -33,6 +33,11 @@ const PR_PATTERNS: readonly {
   },
 ]
 
+/** A body with no file header is not a diff, whatever it arrived as. */
+function looksLikeDiff(text: string): boolean {
+  return /^diff --git |^--- |^Index: |^From [0-9a-f]{7,}/m.test(text)
+}
+
 function toDiffUrl(prUrl: string): string {
   for (const { pattern, diffUrl } of PR_PATTERNS) {
     const match = pattern.exec(prUrl.trim())
@@ -90,8 +95,7 @@ async function fetchPrDiff(prUrl: string): Promise<string> {
 
   const diffText = await response.text()
 
-  // A body with no file header is not a diff, whatever it was served as.
-  if (!/^diff --git |^--- |^Index: |^From [0-9a-f]{7,}/m.test(diffText)) {
+  if (!looksLikeDiff(diffText)) {
     throw new SourceUnavailableError(
       "That link didn't return a diff. Check it points at a pull request and not an issue.",
     )
@@ -101,10 +105,27 @@ async function fetchPrDiff(prUrl: string): Promise<string> {
 }
 
 export async function resolveCodeSource(input: CodeSourceInput): Promise<ResolvedCode> {
+  // Every check here runs before the requirement is parsed, which is the first
+  // call that costs anything. A fetched diff was already held to this standard;
+  // a pasted one was not, so "asdfs" bought a parse call and one comparator call
+  // per criterion.
   if (input.kind === 'diff') {
-    if (input.diffText.trim().length === 0) {
+    const diffText = input.diffText.trim()
+
+    if (diffText.length === 0) {
       throw new InvalidInputError('Diff is empty.')
     }
+    if (diffText.length > MAX_DIFF_CHARS) {
+      throw new InvalidInputError(
+        `Diff is ${diffText.length} characters; the limit is ${MAX_DIFF_CHARS}.`,
+      )
+    }
+    if (!looksLikeDiff(diffText)) {
+      throw new InvalidInputError(
+        'That does not look like a unified diff. Paste the output of git diff, which starts with a diff --git or --- file header.',
+      )
+    }
+
     return { diffText: input.diffText, prReference: null }
   }
 

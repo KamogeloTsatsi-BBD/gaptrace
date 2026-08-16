@@ -2,10 +2,19 @@ import { useMemo } from 'react'
 import { CategoryBreakdown } from './CategoryBreakdown'
 import { NarrativeCardView } from './NarrativeCardView'
 import { UnsettledCriteria } from './UnsettledCriteria'
+import { LoadingPanel } from '../ui/LoadingPanel'
 import { StatGrid, type Stat } from '../ui/StatGrid'
 import { formatDateTime, formatRate } from '../../lib/format'
 import type { InsightsResponse } from '../../types/api'
 import type { InsightSubstrate } from '../../types/domain'
+
+const NARRATING_LINES: readonly string[] = [
+  'Counting the gaps…',
+  'Grouping them by category…',
+  'Looking for what keeps recurring…',
+  'Separating patterns from one-offs…',
+  'Writing it up…',
+]
 
 interface InsightsViewProps {
   data: InsightsResponse | null
@@ -114,9 +123,22 @@ export function InsightsView({
           </p>
         ) : null}
 
-        {narrative?.cards.map((card) => (
-          <NarrativeCardView key={card.finding} card={card} />
-        ))}
+        {/* Announced once here; the panel's own rotating line is aria-hidden. */}
+        <p className="visually-hidden" role="status">
+          {generating ? 'Generating findings…' : ''}
+        </p>
+
+        {generating ? (
+          <LoadingPanel
+            id="narrative-progress-title"
+            title="Writing the findings"
+            lines={NARRATING_LINES}
+          />
+        ) : (
+          narrative?.cards.map((card) => (
+            <NarrativeCardView key={card.finding} card={card} />
+          ))
+        )}
       </section>
     </section>
   )

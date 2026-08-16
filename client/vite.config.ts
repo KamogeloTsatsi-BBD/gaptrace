@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 /** Resolved from this file rather than cwd, which differs by how Vite was started. */
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
@@ -12,7 +11,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, repoRoot, '')
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react()],
 
     // Config is one .env at the repo root; otherwise Vite looks in client/.
     envDir: repoRoot,

@@ -3,7 +3,7 @@ import { buildSubstrate } from '../lib/reportStats.js'
 import { createSingleFlight } from '../lib/singleFlight.js'
 import { stableHash } from '../lib/stableHash.js'
 import { requireAuthContext } from '../middleware/requireAuth.js'
-import { narrateInsights } from '../services/insightNarrator.js'
+import { NARRATOR_VERSION, narrateInsights } from '../services/insightNarrator.js'
 import type { AuthContext } from '../lib/authContext.js'
 import type { AnalysisStoreFactory } from '../repositories/analysisStore.js'
 import type { InsightSnapshotStoreFactory } from '../repositories/insightSnapshotStore.js'
@@ -31,7 +31,8 @@ export function createInsightsRouter(deps: InsightsDeps): Router {
     // caller's analyses, so the substrate and its hash are theirs.
     const reports = await deps.analyses(auth).list(INSIGHT_WINDOW)
     const substrate = buildSubstrate(reports)
-    return { substrate, key: stableHash(substrate) }
+    // Versioned, so changing how a narrative is written retires the old ones.
+    return { substrate, key: stableHash({ substrate, narrator: NARRATOR_VERSION }) }
   }
 
   /** The snapshot minus its cache key. */

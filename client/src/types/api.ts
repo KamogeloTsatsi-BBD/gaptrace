@@ -57,3 +57,13 @@ export type ApiErrorCode =
   | 'upstream_error'
   | 'internal_error'
   | 'network_error'
+
+/**
+ * A failure as the UI holds it. Lives here rather than beside the hook so a
+ * component can be handed one without importing from the layer above it.
+ */
+export interface AnalysisFailure {
+  message: string
+  /** Stable server code, so the UI can offer the right recovery. */
+  code: string
+}

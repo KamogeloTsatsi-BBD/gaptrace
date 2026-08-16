@@ -26,6 +26,10 @@ export function AppShell({ page, onNavigate, children }: AppShellProps) {
 
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+
       <header className="site-header">
         {/* Buttons, not anchors. These switch a view rather than navigate to a
             document, and the previous anchors pointed at fragments that did
@@ -59,7 +63,9 @@ export function AppShell({ page, onNavigate, children }: AppShellProps) {
         </section>
       </header>
 
-      <main className="page-content">{children}</main>
+      <main className="page-content" id="main-content" tabIndex={-1}>
+        {children}
+      </main>
     </>
   )
 }

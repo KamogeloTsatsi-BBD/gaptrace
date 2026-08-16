@@ -1,64 +1,50 @@
-import { useCallback, useState, type ChangeEvent, type FormEvent } from 'react'
-import type { CreateAnalysisRequest } from '../../types/api'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { CodeSourceFields, type CodeSourceKind } from './CodeSourceFields'
+import { LoadingPanel } from '../ui/LoadingPanel'
+import { Notice } from '../ui/Notice'
+import { recoveryHint } from '../../lib/format'
+import { LineNumberedTextarea } from '../ui/LineNumberedTextarea'
+import type { AnalysisFailure, CreateAnalysisRequest } from '../../types/api'
 
-const SAMPLE_SPEC = `As a user, I want to be able to reset my password so that I can regain access to my account if I forget my credentials.
+const STEPS = ['Requirement', 'Code source', 'Review and trace'] as const
 
-Acceptance Criteria:
-1. User can request a password reset from the login page
-2. System sends a reset link to the registered email address
-3. Reset link expires after 24 hours
-4. User can set a new password that meets complexity requirements
-5. User is redirected to login page after successful reset`
+const ANALYSING_LINES: readonly string[] = [
+  'Reading the diff…',
+  'Breaking down your criteria…',
+  'Matching code to criteria…',
+  "Spotting what's missing…",
+  'Collecting evidence…',
+  'Weighing up verdicts…',
+]
 
-const SAMPLE_DIFF = `diff --git a/src/auth/login.ts b/src/auth/login.ts
-index 1234567..abcdefg 100644
---- a/src/auth/login.ts
-+++ b/src/auth/login.ts
-@@ -15,6 +15,10 @@ export function login(email: string, password: string) {
-   }
- 
-   if (!user) {
-+    // TODO: implement password reset request
-+    throw new Error('Invalid credentials')
-     throw new Error('User not found')
-   }
- 
-   return generateSession(user)
- 
-diff --git a/src/auth/reset.ts b/src/auth/reset.ts
-new file mode 100644
-index 0000000..1234567
---- /dev/null
-+++ b/src/auth/reset.ts
-@@ -0,0 +1,24 @@
-+export async function requestPasswordReset(email: string) {
-+  const user = await findUserByEmail(email)
-+  if (!user) return
-+
-+  const token = generateResetToken()
-+  await saveResetToken(user.id, token)
-+
-+  await sendEmail({
-+    to: user.email,
-+    subject: 'Password reset',
-+    body: resetLinkTemplate(token),
-+  })
-+}`
+type Step = 1 | 2 | 3
 
 interface TraceWizardProps {
   onSubmit: (body: CreateAnalysisRequest) => void
   submitting: boolean
+  /** The last submission's failure, rendered where the user pressed the button. */
+  error: AnalysisFailure | null
+  onDismissError: () => void
 }
 
-type CodeSourceKind = 'diff' | 'pr'
-
-export function TraceWizard({ onSubmit, submitting }: TraceWizardProps) {
-  const [currentStep, setCurrentStep] = useState(1)
+/**
+ * Owns the draft being composed, one step at a time. It hands up a request
+ * body, never a call.
+ */
+export function TraceWizard({
+  onSubmit,
+  submitting,
+  error,
+  onDismissError,
+}: TraceWizardProps) {
+  const [step, setStep] = useState<Step>(1)
+  const [sourceKind, setSourceKind] = useState<CodeSourceKind>('diff')
   const [requirementText, setRequirementText] = useState('')
-  const [codeSourceType, setCodeSourceType] = useState<CodeSourceKind>('diff')
   const [diffText, setDiffText] = useState('')
   const [prUrl, setPrUrl] = useState('')
 
+  // Stable identities: the textareas are memoised, and a fresh arrow per
+  // keystroke would defeat that where it matters most.
   const handleRequirementChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => setRequirementText(event.target.value),
     [],
@@ -72,209 +58,209 @@ export function TraceWizard({ onSubmit, submitting }: TraceWizardProps) {
     [],
   )
 
-  const canProceedStep1 = requirementText.trim().length > 0
-  const canProceedStep2 =
-    codeSourceType === 'diff' ? diffText.trim().length > 0 : prUrl.trim().length > 0
+  const sourceValue = sourceKind === 'diff' ? diffText : prUrl
+  const requirementReady = requirementText.trim() !== ''
+  const sourceReady = sourceValue.trim() !== ''
+  // Gates the step, so the review step can never be reached with a blank field.
+  const stepComplete =
+    step === 1 ? requirementReady : step === 2 ? sourceReady : requirementReady && sourceReady
 
-  function goToStep(step: number) {
-    setCurrentStep(step)
+  const notice = useRef<HTMLElement>(null)
+
+  // A failure renders beside the button that caused it, but the button is at the
+  // foot of a long form — without moving focus, a failed run just looks like a
+  // flicker back to the review step.
+  useEffect(() => {
+    if (error) notice.current?.focus()
+  }, [error])
+
+  /** Any deliberate move through the wizard retires the previous failure. */
+  function goToStep(next: Step) {
+    if (error) onDismissError()
+    setStep(next)
   }
 
-  function handleNext() {
-    if (currentStep === 1 && canProceedStep1) setCurrentStep(2)
-    else if (currentStep === 2 && canProceedStep2) setCurrentStep(3)
+  /** The recovery for a link the server would not take: paste the diff instead. */
+  function switchToDiff() {
+    setSourceKind('diff')
+    goToStep(2)
   }
 
-  function handleBack() {
-    if (currentStep === 2) setCurrentStep(1)
-    else if (currentStep === 3) setCurrentStep(2)
-  }
-
-  function handleRunTrace(event: FormEvent<HTMLFormElement>) {
+  /**
+   * Every step submits this form, so advancing and running the analysis are one
+   * path and only the last step can reach the API. Splitting them across a
+   * `type="button"` and a `type="submit"` in the same slot ran the analysis on
+   * arrival at step 3: React mutates `type` on the button already being clicked,
+   * and the browser reads it again when it applies the click's default action.
+   */
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!stepComplete) return
+
+    if (step < 3) {
+      goToStep((step + 1) as Step)
+      return
+    }
+
+    // Built as a union rather than spread from state: the server rejects a
+    // body carrying both, and this makes that shape unwritable.
     onSubmit(
-      codeSourceType === 'diff'
+      sourceKind === 'diff'
         ? { requirementText, diffText }
         : { requirementText, prUrl },
     )
   }
 
+  const forwardLabel =
+    step === 1 ? 'Next: code source' : step === 2 ? 'Next: review' : 'Run analysis'
+
   return (
-    <section className="wizard" aria-labelledby="wizard-title">
+    <section className="wizard" aria-labelledby="analysis-title">
       <header className="section-heading">
         <p className="eyebrow">Pre-merge check</p>
-        <h1 id="wizard-title">Trace the gap between the spec and the change.</h1>
-        <p>Follow the steps to submit acceptance criteria and the code change for analysis.</p>
+        <h1 id="analysis-title">Trace the gap between the spec and the change.</h1>
+        <p>
+          Submit acceptance criteria and the code change. Each verdict will cite the diff
+          evidence it used.
+        </p>
       </header>
 
-      <ol className="wizard-progress" aria-label="Wizard progress">
-        <li className={`wizard-step ${currentStep === 1 ? 'wizard-step--active' : ''} ${currentStep > 1 ? 'wizard-step--complete' : ''}`}>
-          <span className="wizard-step__indicator">1</span>
-          <span className="wizard-step__label">Requirement</span>
-        </li>
-        <li className={`wizard-step ${currentStep === 2 ? 'wizard-step--active' : ''} ${currentStep > 2 ? 'wizard-step--complete' : ''}`}>
-          <span className="wizard-step__indicator">2</span>
-          <span className="wizard-step__label">Code Source</span>
-        </li>
-        <li className={`wizard-step ${currentStep === 3 ? 'wizard-step--active' : ''}`}>
-          <span className="wizard-step__indicator">3</span>
-          <span className="wizard-step__label">Review &amp; Trace</span>
-        </li>
+      <ol className="wizard-progress">
+        {STEPS.map((label, index) => {
+          const number = index + 1
+          const state = number === step ? 'active' : number < step ? 'complete' : 'pending'
+          return (
+            <li
+              key={label}
+              className={`wizard-step wizard-step--${state}`}
+              aria-current={number === step ? 'step' : undefined}
+            >
+              {/* Decorative: the label and aria-current carry the meaning. */}
+              <span className="wizard-step__indicator" aria-hidden="true">
+                {state === 'complete' ? '✓' : number}
+              </span>
+              <span className="wizard-step__label">
+                {label}
+                {state === 'complete' ? (
+                  <span className="visually-hidden"> (completed)</span>
+                ) : null}
+              </span>
+            </li>
+          )
+        })}
       </ol>
 
-      <form className="wizard-form" onSubmit={handleRunTrace}>
-        {currentStep === 1 && (
-          <fieldset className="wizard-panel">
+      <form className="analysis-form wizard-form" onSubmit={handleSubmit}>
+        {step === 1 ? (
+          <fieldset>
             <legend className="visually-hidden">Requirement</legend>
-            <h2 className="wizard-panel__title">Requirement</h2>
+            <h2 className="fieldset-title">Requirement</h2>
             <section className="field">
               <label htmlFor="requirement-text">Acceptance criteria or requirement text</label>
-              <textarea
+              <LineNumberedTextarea
                 id="requirement-text"
                 value={requirementText}
                 onChange={handleRequirementChange}
-                placeholder="Paste a ticket, Gherkin scenario, or acceptance criteria..."
-                className="wizard-textarea"
+                placeholder="Paste a ticket, Gherkin scenario, or acceptance criteria…"
+                rows={9}
                 required
               />
               <p className="field-help">
                 Atomic, independently verifiable criteria produce the clearest report.
               </p>
             </section>
-            <footer className="form-footer">
-              <button type="button" onClick={() => setRequirementText(SAMPLE_SPEC)}>
-                Load Sample Spec
-              </button>
-              <button type="button" onClick={handleNext} disabled={!canProceedStep1}>
-                Next: Code Source
-              </button>
-            </footer>
           </fieldset>
-        )}
+        ) : null}
 
-        {currentStep === 2 && (
-          <fieldset className="wizard-panel">
-            <legend className="visually-hidden">Code Source</legend>
-            <h2 className="wizard-panel__title">Code Source</h2>
+        {step === 2 ? (
+          <CodeSourceFields
+            kind={sourceKind}
+            diffText={diffText}
+            prUrl={prUrl}
+            onKindChange={setSourceKind}
+            onDiffTextChange={handleDiffChange}
+            onPrUrlChange={handlePrUrlChange}
+          />
+        ) : null}
 
-            <section className="source-toggle" aria-label="Code source type">
-              <label htmlFor="source-diff">
-                <input
-                  type="radio"
-                  id="source-diff"
-                  name="source-type"
-                  value="diff"
-                  checked={codeSourceType === 'diff'}
-                  onChange={() => setCodeSourceType('diff')}
-                />
-                Paste Diff
-              </label>
-              <label htmlFor="source-pr">
-                <input
-                  type="radio"
-                  id="source-pr"
-                  name="source-type"
-                  value="pr"
-                  checked={codeSourceType === 'pr'}
-                  onChange={() => setCodeSourceType('pr')}
-                />
-                Public PR / MR Link
-              </label>
-            </section>
+        {submitting ? (
+          <LoadingPanel
+            id="analysis-progress-title"
+            title="Running the analysis"
+            lines={ANALYSING_LINES}
+          />
+        ) : null}
 
-            {codeSourceType === 'diff' ? (
-              <section className="field">
-                <label htmlFor="diff-text">Unified diff</label>
-                <textarea
-                  id="diff-text"
-                  value={diffText}
-                  onChange={handleDiffChange}
-                  placeholder="diff --git a/... b/..."
-                  className="wizard-textarea"
-                  required
-                />
-                <p className="field-help">
-                  Paste a unified diff from git or your review tool.
-                </p>
-                <button
-                  type="button"
-                  className="wizard-sample-btn"
-                  onClick={() => setDiffText(SAMPLE_DIFF)}
-                >
-                  Load Sample Diff
-                </button>
-              </section>
-            ) : (
-              <section className="field">
-                <label htmlFor="pr-url">Public GitHub or GitLab pull request URL</label>
-                <input
-                  id="pr-url"
-                  type="url"
-                  value={prUrl}
-                  onChange={handlePrUrlChange}
-                  placeholder="https://github.com/org/repo/pull/123"
-                  className="wizard-input"
-                  required
-                />
-                <p className="field-help">
-                  Private links cannot be fetched. Paste the diff instead.
-                </p>
-              </section>
-            )}
+        {step === 3 && !submitting ? (
+          <fieldset>
+            <legend className="visually-hidden">Review and trace</legend>
+            <h2 className="fieldset-title">Review and trace</h2>
 
-            <footer className="form-footer">
-              <button type="button" onClick={handleBack}>
-                Back
-              </button>
-              <button type="button" onClick={handleNext} disabled={!canProceedStep2}>
-                Next: Preview
-              </button>
-            </footer>
-          </fieldset>
-        )}
-
-        {currentStep === 3 && (
-          <fieldset className="wizard-panel">
-            <legend className="visually-hidden">Review &amp; Trace</legend>
-            <h2 className="wizard-panel__title">Review &amp; Trace</h2>
-
-            <div className="wizard-review-grid">
-              <section className="wizard-review-col">
-                <header className="wizard-review-header">
+            <section className="wizard-review-grid">
+              <article className="wizard-review-panel">
+                <header>
                   <h3>Requirement</h3>
                   <button type="button" className="text-button" onClick={() => goToStep(1)}>
                     Edit
                   </button>
                 </header>
-                <pre className="wizard-review-preview">
-                  <code>{requirementText || 'No requirement text entered.'}</code>
-                </pre>
-              </section>
+                <pre className="wizard-review-preview">{requirementText}</pre>
+              </article>
 
-              <section className="wizard-review-col">
-                <header className="wizard-review-header">
-                  <h3>Code Source</h3>
+              <article className="wizard-review-panel">
+                <header>
+                  <h3>{sourceKind === 'diff' ? 'Unified diff' : 'Pull request link'}</h3>
                   <button type="button" className="text-button" onClick={() => goToStep(2)}>
                     Edit
                   </button>
                 </header>
-                <pre className="wizard-review-preview">
-                  <code>
-                    {codeSourceType === 'diff' ? (diffText || 'No diff entered.') : (prUrl || 'No PR link entered.')}
-                  </code>
-                </pre>
-              </section>
-            </div>
+                <pre className="wizard-review-preview">{sourceValue}</pre>
+              </article>
+            </section>
 
-            <footer className="form-footer">
-              <button type="button" onClick={handleBack}>
+            <p className="field-help">
+              Your source text is evaluated server-side; API keys never reach this browser.
+            </p>
+          </fieldset>
+        ) : null}
+
+        {/* Persistent, so the change of text is what gets announced. */}
+        <p className="visually-hidden" role="status">
+          {submitting ? 'Analysing criteria…' : `Step ${step} of ${STEPS.length}.`}
+        </p>
+
+        {error && !submitting ? (
+          <Notice
+            ref={notice}
+            tone="error"
+            title="The analysis could not run."
+            // Offered on what was submitted, not on the message's wording: a
+            // pasted diff has no link to fall back from.
+            action={
+              sourceKind === 'pr' ? (
+                <button type="button" onClick={switchToDiff}>
+                  Paste the diff instead
+                </button>
+              ) : null
+            }
+          >
+            {error.message} {recoveryHint(error.code)}
+          </Notice>
+        ) : null}
+
+        {/* Gone while a run is in flight: the panel above says everything, and
+            Back would invite edits to a draft already submitted. */}
+        {submitting ? null : (
+          <footer className="form-footer">
+            {step === 1 ? null : (
+              <button type="button" onClick={() => goToStep((step - 1) as Step)}>
                 Back
               </button>
-              <button type="submit" disabled={submitting}>
-                {submitting ? 'Analysing criteria…' : 'RUN TRACE ANALYSIS'}
-              </button>
-            </footer>
-          </fieldset>
+            )}
+            <button type="submit" disabled={!stepComplete}>
+              {forwardLabel}
+            </button>
+          </footer>
         )}
       </form>
     </section>
