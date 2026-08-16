@@ -1,10 +1,10 @@
 import './lib/loadEnv.js'
+import { assertRequiredEnv } from './lib/requireEnv.js'
 
-// Checked before app.js is imported: constructing the Anthropic client throws
-// on a missing key, and that failure surfaces as an SDK-internal stack trace
-// with no hint about the .env file. Fail here instead, legibly.
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('ANTHROPIC_API_KEY is not set. Copy .env.example to .env at the repo root and fill it in.')
+try {
+  assertRequiredEnv()
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error)
   process.exit(1)
 }
 

@@ -13,12 +13,7 @@ interface CodeSourceFieldsProps {
   onPrUrlChange: (event: ChangeEvent<HTMLInputElement>) => void
 }
 
-/**
- * The half of the form that changes shape. Split out because "which source is
- * this and what does it need from the user" is a separate concern from "the
- * requirement text and how the form submits" — and because adding an
- * authenticated source later should touch one file.
- */
+/** The half of the form that changes shape with the chosen source. */
 export function CodeSourceFields({
   kind,
   diffText,
@@ -57,9 +52,8 @@ export function CodeSourceFields({
         </label>
       </section>
 
-      {/* The label sits beside each control rather than wrapping it. Wrapping
-          the diff textarea folded the entire rendered preview into the field's
-          accessible name, which a screen reader then read out in full. */}
+      {/* Labels sit beside their control: wrapping the diff textarea folded the
+          whole rendered preview into the field's accessible name. */}
       {kind === 'diff' ? (
         <section className="field">
           <label htmlFor="diff-text">Unified diff</label>

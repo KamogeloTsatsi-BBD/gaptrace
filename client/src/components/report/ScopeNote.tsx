@@ -4,14 +4,7 @@ import type { ScopeSignal } from '../../types/domain'
 /** Below this the signal is noise — a couple of uncited test files prove nothing. */
 const MIN_UNCITED_RATIO = 0.5
 
-/**
- * Files the diff changed that no criterion cited.
- *
- * Framed as a prompt, never a verdict: a file cited for one hunk may contain
- * plenty besides, and tests, refactors and generated files go uncited for
- * entirely innocent reasons. Stating it as a finding would be the one place
- * this product overclaims.
- */
+/** Framed as a prompt, never a verdict: the signal over-counts by design. */
 export function ScopeNote({ scope }: { scope: ScopeSignal }) {
   if (scope.changedFiles === 0 || scope.uncitedRatio < MIN_UNCITED_RATIO) return null
 

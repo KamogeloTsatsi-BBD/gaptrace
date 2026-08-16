@@ -8,19 +8,15 @@ interface AnalysisFormProps {
   submitting: boolean
 }
 
-/**
- * Owns the draft the user is composing, and nothing else. It hands up a
- * request body, never a network call — so it renders identically whether the
- * API is live, stubbed, or absent.
- */
+/** Owns the draft being composed. It hands up a request body, never a call. */
 export function AnalysisForm({ onSubmit, submitting }: AnalysisFormProps) {
   const [sourceKind, setSourceKind] = useState<CodeSourceKind>('diff')
   const [requirementText, setRequirementText] = useState('')
   const [diffText, setDiffText] = useState('')
   const [prUrl, setPrUrl] = useState('')
 
-  // Stable identities: the textareas below are memoised, and a fresh arrow on
-  // every keystroke would defeat that on the very component it matters for.
+  // Stable identities: the textareas are memoised, and a fresh arrow per
+  // keystroke would defeat that where it matters most.
   const handleRequirementChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => setRequirementText(event.target.value),
     [],
@@ -36,9 +32,8 @@ export function AnalysisForm({ onSubmit, submitting }: AnalysisFormProps) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    // The server rejects a body carrying both, so the union is built here
-    // rather than spread from state — the type makes the wrong shape
-    // unwritable instead of leaving it to a runtime 400.
+    // Built as a union rather than spread from state: the server rejects a
+    // body carrying both, and this makes that shape unwritable.
     onSubmit(
       sourceKind === 'diff'
         ? { requirementText, diffText }

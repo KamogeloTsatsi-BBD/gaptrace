@@ -1,41 +1,35 @@
 import express from 'express'
 import { createErrorHandler, notFoundHandler } from './middleware/errorHandler.js'
-import { createInMemoryAnalysisStore } from './repositories/analysisStore.js'
+import { createRequireAuth } from './middleware/requireAuth.js'
+import { createSupabaseAnalysisStore } from './repositories/supabaseAnalysisStore.js'
+import { createSupabaseInsightSnapshotStore } from './repositories/supabaseInsightSnapshotStore.js'
 import { createAnalysesRouter } from './routes/analyses.js'
 import { createInsightsRouter } from './routes/insights.js'
-import { createInMemoryInsightSnapshotStore } from './repositories/insightSnapshotStore.js'
-import type { AnalysisStore } from './repositories/analysisStore.js'
-import type { InsightSnapshotStore } from './repositories/insightSnapshotStore.js'
+import type { AnalysisStoreFactory } from './repositories/analysisStore.js'
+import type { InsightSnapshotStoreFactory } from './repositories/insightSnapshotStore.js'
 
-/**
- * A diff and a requirement in one JSON body; the diff is the big half and the
- * comparator caps it at 300k characters, so this only has to be comfortably
- * above that.
- */
-const BODY_LIMIT = '5mb'
+const BODY_LIMIT = '4mb'
 
-/**
- * Composition root: the one place that picks concrete implementations. The
- * store is injected so tests can pass a fake, and so pointing gaptrace at
- * Supabase later is a change here and nowhere else.
- *
- * No CORS layer — the Vite dev server proxies /api to this process, so the
- * browser only ever sees one origin.
- */
+/** Stores are required, so the server can't boot appearing to work and storing nothing. */
 export function createApp(
-  store: AnalysisStore = createInMemoryAnalysisStore(),
-  snapshots: InsightSnapshotStore = createInMemoryInsightSnapshotStore(),
+  stores: AnalysisStoreFactory,
+  snapshots: InsightSnapshotStoreFactory,
 ) {
   const app = express()
 
   app.use(express.json({ limit: BODY_LIMIT }))
 
+  // The only open route: whether the process is up needs no credential.
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true })
   })
 
-  app.use('/api/analyses', createAnalysesRouter(store))
-  app.use('/api/insights', createInsightsRouter({ analyses: store, snapshots }))
+  // Mounted before the routers, not inside them, so a route added later is
+  // behind the gate by default.
+  const requireAuth = createRequireAuth()
+
+  app.use('/api/analyses', requireAuth, createAnalysesRouter(stores))
+  app.use('/api/insights', requireAuth, createInsightsRouter({ analyses: stores, snapshots }))
 
   app.use(notFoundHandler)
   app.use(createErrorHandler())
@@ -43,4 +37,4 @@ export function createApp(
   return app
 }
 
-export const app = createApp()
+export const app = createApp(createSupabaseAnalysisStore, createSupabaseInsightSnapshotStore)

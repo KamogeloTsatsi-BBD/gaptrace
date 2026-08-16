@@ -1,19 +1,20 @@
 /**
- * Verifies the insights cache without calling the model.
- *
- *   npm run check:insights
- *
- * A counting stand-in replaces the narrator, so every assertion below is about
- * how many times we *would* have paid.
+ * `npm run check:insights`. A counting stand-in replaces the narrator, so every
+ * assertion below is about how many times we *would* have paid.
  */
 import assert from 'node:assert/strict'
 import express from 'express'
 import { createInsightsRouter } from '../src/routes/insights.js'
-import { createInMemoryAnalysisStore } from '../src/repositories/analysisStore.js'
-import { createInMemoryInsightSnapshotStore } from '../src/repositories/insightSnapshotStore.js'
 import { computeScopeSignal } from '../src/lib/scopeSignal.js'
 import { summariseCriteria } from '../src/lib/reportStats.js'
-import type { AnalysisReport, EvaluatedCriterion, NarrativeCard } from '../src/types.js'
+import type { AnalysisDraft, AnalysisStore } from '../src/repositories/analysisStore.js'
+import type { InsightSnapshotStore } from '../src/repositories/insightSnapshotStore.js'
+import type {
+  AnalysisReport,
+  EvaluatedCriterion,
+  InsightSnapshot,
+  NarrativeCard,
+} from '../src/types.js'
 
 const DIFF = `diff --git a/src/pay.ts b/src/pay.ts
 --- a/src/pay.ts
@@ -26,7 +27,7 @@ diff --git a/src/also-unasked.ts b/src/also-unasked.ts
 +++ b/src/also-unasked.ts
 `
 
-function report(id: string, seed: number): AnalysisReport {
+function draft(seed: number): AnalysisDraft {
   const criteria: EvaluatedCriterion[] = [
     {
       id: 'c1',
@@ -61,8 +62,6 @@ function report(id: string, seed: number): AnalysisReport {
   ]
 
   return {
-    id,
-    createdAt: '2026-08-15T10:00:00.000Z',
     requirementText: 'Users must be able to pay by card.',
     prReference: `https://github.com/acme/repo/pull/${seed}`,
     summary: summariseCriteria(criteria),
@@ -87,12 +86,50 @@ const fakeNarrate = async (): Promise<NarrativeCard[]> => {
   ]
 }
 
-const analyses = createInMemoryAnalysisStore()
-const snapshots = createInMemoryInsightSnapshotStore()
+// Stub stores, defined here rather than shipped in `src/` — the behaviour under
+// test belongs to the router, not to storage.
+let nextId = 1
+const saved: AnalysisReport[] = []
+
+const analyses: AnalysisStore = {
+  async save(draftReport) {
+    const report: AnalysisReport = {
+      ...draftReport,
+      id: nextId++,
+      createdAt: '2026-08-15T10:00:00.000Z',
+    }
+    saved.push(report)
+    return report
+  },
+  async findById(id) {
+    return saved.find((report) => report.id === id) ?? null
+  },
+  async list(limit) {
+    return [...saved].reverse().slice(0, limit)
+  },
+}
+
+let snapshot: InsightSnapshot | null = null
+const snapshots: InsightSnapshotStore = {
+  async get(key) {
+    return snapshot?.key === key ? snapshot : null
+  },
+  async save(next) {
+    snapshot = next
+  },
+}
 
 const app = express()
 app.use(express.json())
-app.use('/api/insights', createInsightsRouter({ analyses, snapshots, narrate: fakeNarrate }))
+// Stands in for `requireAuth`. One pinned caller, since the cache is per-user.
+app.use((req, _res, next) => {
+  req.auth = { userId: 'test-user', accessToken: 'test-token' }
+  next()
+})
+app.use(
+  '/api/insights',
+  createInsightsRouter({ analyses: () => analyses, snapshots: () => snapshots, narrate: fakeNarrate }),
+)
 const server = app.listen(4599)
 const base = 'http://localhost:4599/api/insights'
 
@@ -107,8 +144,8 @@ try {
   assert.equal(body.canNarrate, false)
   console.log('empty state: substrate served, nothing narrated')
 
-  await analyses.save(report('a1', 1))
-  await analyses.save(report('a2', 2))
+  await analyses.save(draft(1))
+  await analyses.save(draft(2))
 
   // --- scope proxy
   body = await get()
@@ -152,7 +189,7 @@ try {
   console.log('GET now serves the cached narrative, stale=false')
 
   // --- new analysis invalidates by content hash
-  await analyses.save(report('a3', 3))
+  await analyses.save(draft(3))
   body = await get()
   assert.equal(body.stale, true)
   assert.equal(body.narrative, null)

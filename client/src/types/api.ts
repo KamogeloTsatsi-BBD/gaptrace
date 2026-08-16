@@ -1,8 +1,4 @@
-/**
- * Wire shapes that are not domain objects: request bodies and the envelopes the
- * routes wrap domain objects in. Kept apart from `domain.ts` so the domain
- * mirror stays a clean reflection of the server's own types.
- */
+/** Request bodies and route envelopes, kept apart so `domain.ts` stays a mirror. */
 
 import type { AnalysisSummary, InsightSubstrate, NarrativeCard } from './domain'
 
@@ -14,7 +10,7 @@ export type CreateAnalysisRequest = { requirementText: string } & (
 
 /** A row from `GET /api/analyses` — summaries only, no verdicts. */
 export interface AnalysisListItem {
-  id: string
+  id: number
   createdAt: string
   prReference: string | null
   summary: AnalysisSummary
@@ -32,11 +28,7 @@ export interface InsightNarrative {
   analysisCount: number
 }
 
-/**
- * `GET /api/insights`. `stale` means the numbers moved since the last
- * narration, so the UI offers regeneration rather than spending on its own;
- * `canNarrate` is false when there is nothing yet to narrate.
- */
+/** `stale` means the numbers moved since the last narration. */
 export interface InsightsResponse {
   substrate: InsightSubstrate
   narrative: InsightNarrative | null
@@ -59,6 +51,7 @@ export interface ApiErrorBody {
 
 export type ApiErrorCode =
   | 'invalid_input'
+  | 'unauthorized'
   | 'source_unavailable'
   | 'not_found'
   | 'upstream_error'

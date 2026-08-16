@@ -1,9 +1,6 @@
 /**
- * The one AI call in the insights layer: substrate -> narrative cards.
- *
- * It reads the compact substrate, never raw diffs, so a narration costs
- * roughly the same whether it covers 10 analyses or 500. Callers are expected
- * to cache the result against the substrate hash — see `insightSnapshotStore`.
+ * The one AI call in the insights layer. It reads the compact substrate, never
+ * raw diffs, so a narration costs the same at 500 analyses as at 10.
  */
 import * as z from 'zod/v4'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
@@ -12,7 +9,6 @@ import type { AiDeps } from '../lib/claude.js'
 import { InvalidInputError } from '../lib/errors.js'
 import type { InsightSubstrate, NarrativeCard } from '../types.js'
 
-/** Enough for a story, few enough to read. Also caps output tokens. */
 const MAX_CARDS = 6
 
 const Narrative = z.object({
@@ -70,10 +66,7 @@ overengineering, and say so in the hypothesis.`
 
 export interface NarratorDeps extends AiDeps {}
 
-/**
- * @throws {InvalidInputError} when there is nothing to narrate — calling the
- * model to describe an empty dataset is money for nothing.
- */
+/** @throws {InvalidInputError} when there is nothing to narrate. */
 export async function narrateInsights(
   substrate: InsightSubstrate,
   deps: NarratorDeps = defaultAiDeps,
@@ -102,7 +95,6 @@ export async function narrateInsights(
     throw new Error('insightNarrator: model returned no parseable output')
   }
 
-  // The schema cannot express a maximum length, so an over-long list is
-  // trimmed rather than passed through to the client.
+  // The schema cannot express a maximum length, so trim here.
   return response.parsed_output.cards.slice(0, MAX_CARDS)
 }

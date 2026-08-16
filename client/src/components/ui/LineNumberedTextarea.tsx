@@ -10,11 +10,7 @@ interface LineNumberedTextareaProps {
   className?: string
 }
 
-/**
- * Counts newlines without allocating the split array. On a large pasted diff
- * this runs on every keystroke, and `value.split('\n').length` builds a
- * throwaway array of every line to read one number off it.
- */
+/** Counts newlines without the throwaway array `split('\n').length` allocates. */
 function countLines(value: string): number {
   let lines = 1
   for (let index = value.indexOf('\n'); index !== -1; index = value.indexOf('\n', index + 1)) {
@@ -41,13 +37,11 @@ export const LineNumberedTextarea = memo(function LineNumberedTextarea({
   const gutter = useRef<HTMLOutputElement>(null)
   const lineCount = Math.max(countLines(value), rows)
 
-  // The gutter string only changes when a line is added or removed, not on
-  // every character typed into an existing line.
+  // Changes only when a line is added or removed, not per character typed.
   const lineNumbers = useMemo(() => buildGutter(lineCount), [lineCount])
 
   function syncScroll(event: UIEvent<HTMLTextAreaElement>) {
-    // Written straight to the DOM node rather than held in state: this fires
-    // at scroll frequency and no other part of the UI derives from it.
+    // Straight to the DOM, not state: this fires at scroll frequency.
     if (gutter.current) gutter.current.scrollTop = event.currentTarget.scrollTop
   }
 

@@ -19,16 +19,7 @@ export interface AnalysisState {
 
 const IDLE: AnalysisState = { report: null, submitting: false, error: null }
 
-/**
- * Owns the running of one analysis: the request, its lifecycle, and the report
- * it produces. The form below it stays a controlled form and knows nothing
- * about the API; the page above it stays layout.
- *
- * The three fields move together and are never meaningfully independent — a
- * submitting run has no report and no error — so they are one state object
- * rather than three `useState` calls that can be left inconsistent between
- * renders.
- */
+/** One state object, not three: the fields move together and can't disagree. */
 export function useAnalysis(accessToken?: string) {
   const [state, setState] = useState<AnalysisState>(IDLE)
   const { begin } = useLatestRequest()
